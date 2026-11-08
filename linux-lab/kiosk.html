@@ -35,6 +35,10 @@
 <nav id="menu" aria-label="Start menu" hidden></nav>
 <footer><button id="start" aria-expanded="false"><span class="start-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Start</b></button><span id="tasks"></span><span id="identity">Reading Debian session…</span></footer>
 <script type="module">
+  if (location.hash) {
+    sessionStorage.setItem("reactoros-terminal-token", location.hash.slice(1));
+    history.replaceState(null, "", location.pathname + location.search);
+  }
   const programs = new Map([
     ["/", "Plant Operations Terminal"], ["/reactor", "RBWR Unit 2"],
     ["/status-desk", "Status Desk"], ["/supervisor", "Plant Supervisor"],

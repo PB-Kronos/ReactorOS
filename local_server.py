@@ -2,6 +2,7 @@
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import json
+import hmac
 import math
 import os
 import sqlite3
@@ -49,6 +50,26 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError
         except ValueError:
             return self.send_json({"error": "Invalid JSON request"}, 400)
+        if self.path == "/api/desktop/terminal":
+            token = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
+            supplied = self.headers.get("X-ReactorOS-Session", "").encode("utf-8")
+            if (not debian_session() or self.headers.get("Origin") != origin
+                    or not token or not hmac.compare_digest(token.encode(), supplied)
+                    or not permitted("terminal:execute")):
+                return self.send_json({"error": "Debian terminal access denied"}, 403)
+            command = data.get("command")
+            if not isinstance(command, str) or not command.strip() or "\0" in command:
+                return self.send_json({"error": "Enter a Debian command"}, 400)
+            try:
+                subprocess.Popen(
+                    ["xterm", "-hold", "-T", "ReactorOS Debian Terminal", "-e", "/bin/sh", "-c", command],
+                    cwd=Path.home(), start_new_session=True,
+                )
+            except FileNotFoundError:
+                return self.send_json({"error": "Debian terminal needs xterm. Install it with sudo apt-get install xterm."}, 503)
+            except OSError as exc:
+                return self.send_json({"error": str(exc)}, 503)
+            return self.send_json({"started": "terminal"}, 202)
         if self.path == "/api/desktop/launch" and debian_session():
             app = data.get("app")
             if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users"):

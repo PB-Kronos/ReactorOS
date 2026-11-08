@@ -6,7 +6,129 @@ import {
   GREETING_TERMINAL_RESPONSES,
 } from "@/lib/terminalCommands";
 
-const Index = () => {
+const workstationApps = [
+  ["reactor", "app:reactor", "/reactor"],
+  ["console", "app:mainframe", "/mainframe"],
+  ["supervisor", "app:supervisor", "/supervisor"],
+  ["status-desk", "app:status-desk", "/status-desk"],
+  ["manual", "app:manual", "/manual"],
+  ["live-variables", "app:live-variables", "/plant-tools.html?tool=database"],
+  ["events", "app:events", "/plant-tools.html?tool=server"],
+  ["files", "app:files", ""],
+  ["editor", "app:editor", ""],
+  ["images", "app:images", ""],
+  ["browser", "app:browser", ""],
+  ["users", "users:manage", ""],
+] as const;
+
+async function workstationRequest(path: string, body?: object, token?: string) {
+  const response = await fetch(path, body ? {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "X-ReactorOS-Session": token } : {}),
+    },
+    body: JSON.stringify(body),
+  } : { cache: "no-store" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data;
+}
+
+const workstationHelp = [
+  "help                     Show commands",
+  "apps                     List apps you can open",
+  "open <app>               Open or focus an app",
+  "whoami / roles           Show your Debian account or ReactorOS roles",
+  "status                   Check the local server and plant connection",
+  "time / date              Show local date and time",
+  "uptime                   Show time since this terminal opened",
+  "echo <text> / clear      Print text or clear the screen",
+].join("\n");
+
+function WorkstationTerminal() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState(["ReactorOS Plant Operations Terminal", "Type help to list commands."]);
+  const [busy, setBusy] = useState(false);
+  const outputRef = useRef<HTMLPreElement>(null);
+  const openedAt = useRef(performance.now());
+  useEffect(() => {
+    outputRef.current?.scrollTo(0, outputRef.current.scrollHeight);
+  }, [output]);
+
+  async function execute(command: string) {
+    const [verb] = command.split(/\s+/, 1);
+    const argument = command.slice(verb.length).trimStart();
+    const action = verb.toLowerCase();
+    if (action === "echo") return argument;
+    if (action === "time" || action === "date") return new Date().toLocaleString();
+    if (action === "uptime") return `Terminal open for ${Math.floor((performance.now() - openedAt.current) / 1000)} seconds.`;
+    const operator: { name: string; roles: string[]; permissions: string[] } = await workstationRequest("/api/operator");
+    const can = (permission: string) => operator.permissions.includes(permission);
+    if (action === "help") return workstationHelp + (can("terminal:execute")
+      ? "\nterminal <command>       Run a Debian command in its own terminal window" : "");
+    if (action === "whoami") return operator.name;
+    if (action === "roles") return operator.roles.join(", ") || "No roles assigned.";
+    if (action === "status") {
+      const service = await workstationRequest("/api/status");
+      const plant = await workstationRequest("/api/plant").catch(() => null);
+      return `Local server: ${service.status}\nRBWR link: ${plant ? (plant.online ? "online" : "offline") : "unavailable"}`;
+    }
+    if (action === "apps") {
+      return workstationApps.filter(([, permission]) => can(permission)).map(([app]) => app).join("\n")
+        || "No applications available.";
+    }
+    if (action === "terminal") {
+      if (!can("terminal:execute")) return "Permission denied for Debian terminal.";
+      if (!argument) return "Usage: terminal <command>";
+      await workstationRequest("/api/desktop/terminal", { command: argument }, sessionStorage.getItem("reactoros-terminal-token") || undefined);
+      return "Opened Debian Terminal.";
+    }
+    const app = workstationApps.find(([name]) => name === (action === "open" ? argument.toLowerCase() : action));
+    if (!app) return action === "open" ? "Unknown app. Type apps for available names." : "Unknown command. Type help.";
+    const [name, permission, route] = app;
+    if (!can(permission)) return `Permission denied for ${name}.`;
+    if (route) {
+      if (!window.open(route)) return "App could not open. Try the Start menu.";
+    } else {
+      await workstationRequest("/api/desktop/launch", { app: name });
+    }
+    return `Opened ${name}.`;
+  }
+
+  return (
+    <main className="flex h-screen flex-col gap-2 bg-[#c0c0c0] p-2 font-mono text-black">
+      <pre ref={outputRef} role="log" className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap border-2 border-inset border-[#808080] bg-black p-3 text-[#eee]">
+        {output.join("\n")}
+      </pre>
+      <form className="flex items-center gap-2" onSubmit={async (event) => {
+        event.preventDefault();
+        const command = input.trim();
+        if (!command || busy) return;
+        setInput("");
+        if (command.toLowerCase() === "clear") {
+          setOutput([]);
+          return;
+        }
+        setBusy(true);
+        const response = await execute(command).catch(error => String(error.message || error));
+        setOutput(previous => [...previous.slice(-198), command.match(/^terminal\s/i) ? "> terminal [command sent]" : `> ${command}`, response]);
+        setBusy(false);
+      }}>
+        <span aria-hidden="true">&gt;</span>
+        <input aria-label="Command" autoFocus autoComplete="off" spellCheck={false} value={input}
+          onChange={event => setInput(event.target.value)} className="min-w-0 flex-1 border-2 border-[#808080] bg-white px-2 py-1" />
+        <button disabled={busy} className="border-2 border-t-white border-l-white border-b-[#404040] border-r-[#404040] px-3 py-1">Run</button>
+      </form>
+    </main>
+  );
+}
+
+const Index = () => sessionStorage.getItem("reactoros-debian-operator")
+  ? <WorkstationTerminal />
+  : <SimulatorGreeting />;
+
+const SimulatorGreeting = () => {
   const [input, setInput] = useState("");
   const [booting, setBooting] = useState(true);
   const [lines, setLines] = useState<string[]>([]);

@@ -10,7 +10,7 @@ APP_PERMISSIONS = {f"app:{name}" for name in PROGRAMS} | {
     "app:files", "app:editor", "app:images", "app:browser",
     "app:live-variables", "app:events",
 }
-PERMISSIONS = APP_PERMISSIONS | {"database:edit", "users:manage"}
+PERMISSIONS = APP_PERMISSIONS | {"database:edit", "users:manage", "terminal:execute"}
 BASIC = {"app:greeting", "app:manual", "app:status-desk"}
 DEFAULT_ROLES = {
     "trainee": BASIC,
@@ -52,7 +52,7 @@ def current_access():
     except (OSError, ValueError, KeyError, TypeError):
         roles, permissions = [], set()
     if not sudo:
-        permissions.discard("users:manage")
+        permissions.difference_update({"users:manage", "terminal:execute"})
     return {"name": account.pw_name, "roles": roles, "sudoGroup": sudo,
             "permissions": sorted(permissions & PERMISSIONS)}
 

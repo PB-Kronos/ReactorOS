@@ -6,17 +6,16 @@ interface SynchronoscopeProps {
   syncMargin: number;
   targetRPM: number;
   closeup?: boolean;
+  syncRPM?: number;
 }
 
-const SYNC_RPM = 3000;
-
 /** A phase meter: its needle rotates from the live RPM difference, not a fixed gauge position. */
-export const Synchronoscope = ({ actualRPM, isSynchronized, syncMargin, targetRPM, closeup = false }: SynchronoscopeProps) => {
+export const Synchronoscope = ({ actualRPM, isSynchronized, syncMargin, targetRPM, closeup = false, syncRPM = 3000 }: SynchronoscopeProps) => {
   const [phase, setPhase] = useState(0);
   const phaseRef = useRef(0);
   const frameRef = useRef<number>();
   const lastTime = useRef<number>();
-  const rpmDifference = actualRPM - SYNC_RPM;
+  const rpmDifference = actualRPM - syncRPM;
 
   useEffect(() => {
     const animate = (time: number) => {
@@ -69,7 +68,7 @@ export const Synchronoscope = ({ actualRPM, isSynchronized, syncMargin, targetRP
       <circle cx="150" cy="150" r="4" fill="#e2e8f0"/>
       <rect x="73" y="184" width="154" height="52" rx="7" fill="#020617" stroke="#334155"/>
       <text x="150" y="204" textAnchor="middle" fill={needleColour} fontSize="15" fontWeight="800">{direction}</text>
-      <text x="150" y="222" textAnchor="middle" fill="#e2e8f0" fontSize="12">{actualRPM.toFixed(1)} / {SYNC_RPM} RPM</text>
+      <text x="150" y="222" textAnchor="middle" fill="#e2e8f0" fontSize="12">{actualRPM.toFixed(1)} / {syncRPM} RPM</text>
       <text x="150" y="240" textAnchor="middle" fill={Math.abs(signedPhaseDifference) <= 12 ? "#4ade80" : "#fbbf24"} fontSize="11" fontWeight="700">PHASE {signedPhaseDifference >= 0 ? "+" : ""}{signedPhaseDifference.toFixed(0)}°</text>
       <circle cx="48" cy="258" r="10" fill="#fde047" opacity={lampA} filter="drop-shadow(0 0 6px #fde047)"/>
       <circle cx="252" cy="258" r="10" fill="#fde047" opacity={lampB} filter="drop-shadow(0 0 6px #fde047)"/>

@@ -23,6 +23,7 @@ export type Unit2ProcessInputs = {
   reliefValvesOpen: number;
   targetTurbineSpeed: number;
   isSynchronized: boolean;
+  synchronizedSpeed?: number;
   turningGearActive: boolean;
   thermalResponse: number;
   steamProductionMultiplier: number;
@@ -105,7 +106,7 @@ export const stepUnit2Process = (
     ? clamp(input.turbineSteamKgS / 3, 0, 80)
     : 0;
   const targetSpeed = input.isSynchronized
-    ? 66.67
+    ? input.synchronizedSpeed ?? 66.67
     : Math.max(flowTarget, input.targetTurbineSpeed);
 
   return {

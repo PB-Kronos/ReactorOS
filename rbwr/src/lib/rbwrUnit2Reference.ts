@@ -10,6 +10,7 @@ export type Unit2RpsInputs = {
   aprm: number;
   previousAprm: number;
   reactorLevelM: number;
+  lowLevelTripM?: number;
   pressureKpa: number;
   reactorPeriodSeconds: number;
   mode: "SD" | "SRM" | "IPR" | "RUN";
@@ -18,7 +19,7 @@ export type Unit2RpsInputs = {
 
 /** Unit 2 RPS full-trip initiating conditions (TripConditions.lua). */
 export const getUnit2RpsTrips = (input: Unit2RpsInputs) => ({
-  "REACTOR LEVEL": input.reactorLevelM < -4,
+  "REACTOR LEVEL": input.reactorLevelM < (input.lowLevelTripM ?? -4),
   "APRM UPSCALE": input.aprm > 125,
   // The source inhibits the low-power trip during the startup programme.
   "APRM DOWNSCALE": input.mode === "RUN" && input.aprm < 5,

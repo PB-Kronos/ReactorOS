@@ -22,6 +22,8 @@ interface UseReactorPhysicsProps {
   pump1Online: boolean;
   pump2Online: boolean;
   isLocked: boolean;
+  synchronizedSpeed?: number;
+  takeTemperatureOverride?: () => number | undefined;
   targetTurbineSpeed: number;
   thermalResponse?: number;
   steamProductionMultiplier?: number;
@@ -62,9 +64,10 @@ export const useReactorPhysics = (props: UseReactorPhysicsProps) => {
       const state = current.current;
       if (state.simulationPaused) return;
       const openReliefValves = state.reliefValvesOpen ?? (state.reliefOpen ? 1 : 0);
+      const externalHeat = state.takeTemperatureOverride?.();
       const next = stepUnit2Process({
         temperatureC: state.temperature,
-        thermalEnergyC: stateThermalEnergy.current,
+        thermalEnergyC: externalHeat ?? stateThermalEnergy.current,
         pressureKpa: statePressure.current,
         fuelPercent: stateFuel.current,
         turbineSpeed: stateTurbineSpeed.current,
@@ -79,6 +82,7 @@ export const useReactorPhysics = (props: UseReactorPhysicsProps) => {
         reliefValvesOpen: openReliefValves,
         targetTurbineSpeed: state.targetTurbineSpeed,
         isSynchronized: state.isLocked,
+        synchronizedSpeed: state.synchronizedSpeed,
         turningGearActive: !state.isRunning && state.targetTurbineSpeed > 0,
         thermalResponse: state.thermalResponse ?? 1,
         steamProductionMultiplier: state.steamProductionMultiplier ?? 1,

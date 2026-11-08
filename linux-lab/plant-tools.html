@@ -5,65 +5,275 @@
 <title>ReactorOS Plant Tools</title>
 <style>
   body { font: 14px Tahoma, sans-serif; background: silver; margin: 12px }
-  pre { padding: 10px; background: white; border: 2px inset white; white-space: pre-wrap }
-  button { border: 2px outset white; background: silver }
-  fieldset { margin: 10px 0 }
+  h1 { font-size: 18px; margin: 0 0 8px }
+  button { border: 2px outset white; background: silver; font: inherit; padding: 2px 8px }
+  button:active { border-style: inset }
+  input, select { font: inherit }
+  pre, #results { background: white; border: 2px inset white; white-space: pre-wrap; overflow-wrap: anywhere }
+  pre { padding: 8px }
+  #results { max-height: 65vh; overflow: auto }
+  #toolbar, #scenario-form, #command-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 }
+  #command { flex: 1; min-width: 12em }
+  table { border-collapse: collapse; width: 100%; white-space: normal }
+  th { position: sticky; top: 0; background: silver; text-align: left }
+  td, th { padding: 4px 6px; border-bottom: 1px solid #ddd; vertical-align: top }
+  td:nth-child(2) { overflow-wrap: anywhere }
+  article { padding: 6px 8px; border-bottom: 1px solid silver }
+  article pre { margin: 4px 0; border: 0; padding: 0 }
+  #actions, dialog { background: silver; border: 2px outset white; padding: 5px }
+  #actions { position: fixed; z-index: 1 }
+  #actions button { display: block; width: 100%; text-align: left }
+  dialog label { display: block; margin: 8px }
+  #cli-output { height: 45vh; overflow: auto; color: white; background: black }
+  [hidden] { display: none !important }
 </style>
-<h1 id="title"></h1>
-<p id="status" role="status"></p>
-<form id="editor" hidden>
-  <fieldset><legend>Simulation override</legend>
-  <label>Variable <select id="variable">
-    <option value="reactor.temp">Temperature (°C)</option>
-    <option value="reactor.pressure">Pressure (kPa)</option>
-    <option value="reactor.aprm">Reactor power (APRM %)</option>
-  </select></label>
-  <label>Value <input id="value" type="number" step="any" required></label>
-  <button id="apply" disabled>Apply</button></fieldset>
-</form>
-<pre id="output"></pre>
+<h1 id="title">Plant Database</h1>
+<p id="connection"></p>
+<p id="message" role="status"></p>
+<section id="database" hidden>
+  <div id="toolbar">
+    <label>View <select id="view"><option value="table">Table</option><option value="details">Detailed list</option><option value="cli">Terminal</option></select></label>
+    <label>Sort <select id="sort"><option value="name">Name</option><option value="mode">Mode</option><option value="kind">Type</option><option value="value">Value</option></select></label>
+    <label><input type="checkbox" id="descending"> Descending</label>
+    <label>Find <input id="search" type="search"></label>
+  </div>
+  <div id="results"></div>
+  <section id="cli" hidden>
+    <pre id="cli-output" role="log">Plant Database Terminal. Type help.</pre>
+    <form id="command-form"><label for="command">&gt;</label><input id="command" autocomplete="off" spellcheck="false" aria-label="Database command"><button>Run</button></form>
+  </section>
+  <form id="scenario-form" hidden><label>Scenario <select id="scenario"></select></label><button>Load scenario</button></form>
+</section>
+<pre id="events" hidden></pre>
+<div id="actions" hidden></div>
+<dialog id="edit">
+  <form id="edit-form">
+    <strong id="edit-name"></strong>
+    <label>Mode <select id="mode"><option>released</option><option>persistent</option><option>saved</option><option>default</option></select></label>
+    <label><input type="checkbox" id="new-value"> Use a new value</label>
+    <label>Value <input id="value" disabled></label>
+    <button type="submit">Apply</button> <button id="cancel" type="button">Cancel</button>
+  </form>
+</dialog>
 <script type="module">
-  const serverView = new URLSearchParams(location.search).get("tool") === "server";
-  const editor = document.querySelector("#editor");
-  const apply = document.querySelector("#apply");
-  const status = document.querySelector("#status");
-  const output = document.querySelector("#output");
-  document.querySelector("#title").textContent = serverView ? "Server Event Log" : "Live Variables";
-  const canEdit = JSON.parse(sessionStorage.getItem("reactoros-permissions") || "[]").includes("database:edit");
-  editor.hidden = serverView || !canEdit;
-  editor.addEventListener("submit", async event => {
-    event.preventDefault();
-    const command = document.querySelector("#variable").value;
-    const value = document.querySelector("#value").valueAsNumber;
-    if (!Number.isFinite(value) || apply.disabled) return;
-    try {
-      const reply = await fetch("/api/plant/override", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variable: command, value }),
-      });
-      const result = await reply.json();
-      status.textContent = reply.ok ? "Override queued for the active control room." : result.error;
-    } catch {
-      status.textContent = "The server could not be reached.";
+  const $ = id => document.getElementById(id);
+  const eventsView = new URLSearchParams(location.search).get("tool") === "server";
+  const endpoint = "/api/database/variables";
+  let rows = [], canEdit = false, online = false, selected;
+  const modes = ["released", "persistent", "saved", "default"];
+  const scenarioForm = $("scenario-form");
+  const menu = $("actions");
+  const dialog = $("edit");
+  $("title").textContent = eventsView ? "Server Event Log" : "Plant Database";
+  $(eventsView ? "events" : "database").hidden = false;
+
+  function element(tag, value) {
+    const node = document.createElement(tag);
+    if (value !== undefined) node.textContent = value;
+    return node;
+  }
+
+  function format(value, detail = false) {
+    if (value === null || value === undefined) return "—";
+    if (typeof value === "number" && !detail) return Number(value.toFixed(4)).toString();
+    return typeof value === "object" ? JSON.stringify(value, null, detail ? 2 : 0) : String(value);
+  }
+
+  async function request(path, body) {
+    const headers = { "X-ReactorOS-Session": sessionStorage.getItem("reactoros-terminal-token") || "" };
+    const reply = await fetch(path, body ? {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    } : { cache: "no-store", headers });
+    const data = await reply.json();
+    if (!reply.ok) throw new Error(data.error || "Database unavailable");
+    return data;
+  }
+
+  function showActions(row, x, y) {
+    if (!canEdit || row.kind === "readonly") return;
+    menu.replaceChildren();
+    for (const [label, run] of [["Edit value or mode…", () => openEdit(row)], ["Delete value", () => {
+      if (confirm("Delete the stored value of " + row.name + " and let the simulator regenerate it?"))
+        void change({ operation: "delete", name: row.name });
+    }]]) {
+      const button = element("button", label);
+      button.onclick = () => { menu.hidden = true; run(); };
+      menu.append(button);
     }
-  });
-  async function refresh() {
-    try {
-      const reply = await fetch(serverView ? "/api/events" : "/api/plant", { cache: "no-store" });
-      if (!reply.ok) throw new Error("Service unavailable");
-      const data = await reply.json();
-      if (serverView) {
-        output.textContent = data.events.map(event => `${event.created_at} UTC  ${event.message}`).join("\n") || "No events recorded.";
+    menu.hidden = false;
+    menu.style.left = Math.max(0, Math.min(x, innerWidth - menu.offsetWidth)) + "px";
+    menu.style.top = Math.max(0, Math.min(y, innerHeight - menu.offsetHeight)) + "px";
+    menu.querySelector("button").focus();
+  }
+
+  function attachActions(node, row) {
+    if (!canEdit || row.kind === "readonly") return;
+    const button = element("button", "Actions");
+    button.setAttribute("aria-label", "Actions for " + row.name);
+    button.onclick = event => showActions(row, event.clientX || button.getBoundingClientRect().left, event.clientY || button.getBoundingClientRect().bottom);
+    node.oncontextmenu = event => { event.preventDefault(); showActions(row, event.clientX, event.clientY); };
+    return button;
+  }
+
+  function render() {
+    const view = $("view").value;
+    $("results").hidden = view === "cli";
+    $("cli").hidden = view !== "cli";
+    if (view === "cli" || !menu.hidden || dialog.open || $("results").contains(document.activeElement)) return;
+    const search = $("search").value.trim().toLowerCase();
+    const key = $("sort").value;
+    const direction = $("descending").checked ? -1 : 1;
+    const matches = rows.filter(row => row.name.toLowerCase().includes(search)).sort((a, b) => {
+      const left = a[key], right = b[key];
+      const order = typeof left === "number" && typeof right === "number" ? left - right : format(left).localeCompare(format(right), undefined, { numeric: true });
+      return direction * (order || a.name.localeCompare(b.name));
+    });
+    const table = view === "table" ? element("table") : null;
+    const body = table?.createTBody();
+    if (table) {
+      const header = table.createTHead().insertRow();
+      for (const label of ["Variable", "Value", "Mode", "Type", "Actions"]) header.append(element("th", label));
+    }
+    const list = document.createDocumentFragment();
+    for (const row of matches) {
+      const node = body ? body.insertRow() : element("article");
+      const actions = attachActions(node, row);
+      if (body) {
+        for (const value of [row.name, format(row.value), row.mode, row.kind]) node.insertCell().textContent = value;
+        const cell = node.insertCell();
+        if (actions) cell.append(actions);
       } else {
-        apply.disabled = !canEdit || !data.online;
-        output.textContent = data.online ? JSON.stringify(data.state, null, 2) : "Control room offline.";
+        node.append(element("strong", row.name), element("p", row.mode + " • Default: " + row.default_mode + " • " + row.kind
+          + (row.bounds ? (row.kind === "string" ? " • Choices: " + row.bounds.join(", ") : " • Range: " + row.bounds.join(" to ")) : "")), element("pre", format(row.value, true)));
+        if (actions) node.append(actions);
+        list.append(node);
       }
+    }
+    $("results").replaceChildren(matches.length ? (table || list) : element("p", "No matching variables. Open the RBWR control room to discover its variables."));
+  }
+
+  function openEdit(row) {
+    selected = row;
+    $("edit-name").textContent = row.name;
+    $("mode").value = row.mode;
+    $("value").value = row.value ?? "";
+    $("new-value").checked = true;
+    $("value").disabled = false;
+    dialog.showModal();
+  }
+
+  function typedValue(row, text) {
+    if (row.kind === "string") {
+      const choice = row.bounds.find(value => value.toLowerCase() === text.trim().toLowerCase());
+      if (choice !== undefined) return choice;
+      throw new Error("Choose " + row.bounds.join(", ") + ".");
+    }
+    if (row.kind === "boolean" && /^(true|false)$/i.test(text)) return text.toLowerCase() === "true";
+    if (row.kind === "number" && text.trim() && Number.isFinite(Number(text))) return Number(text);
+    throw new Error("Enter a " + (row.kind === "boolean" ? "boolean (true or false)" : "number") + ".");
+  }
+
+  async function change(body) {
+    try {
+      await request(endpoint, body);
+      $("message").textContent = body.operation === "scenario" ? "Scenario queued for the control room." : "Change recorded.";
+      await refresh();
+      return $("message").textContent;
     } catch (error) {
-      apply.disabled = true;
-      output.textContent = error.message;
-    } finally {
-      setTimeout(refresh, 1000);
+      $("message").textContent = error.message;
+      return error.message;
     }
   }
-  void refresh();
+
+  $("new-value").onchange = () => { $("value").disabled = !$("new-value").checked; };
+  $("cancel").onclick = () => dialog.close();
+  $("edit-form").onsubmit = event => {
+    event.preventDefault();
+    try {
+      const body = { operation: "mode", name: selected.name, mode: $("mode").value };
+      if ($("new-value").checked) body.value = typedValue(selected, $("value").value);
+      dialog.close();
+      void change(body);
+    } catch (error) { $("message").textContent = error.message; }
+  };
+  scenarioForm.onsubmit = event => {
+    event.preventDefault();
+    if (canEdit && online && confirm("Load " + $("scenario").value + " into the running simulator?"))
+      void change({ operation: "scenario", scenario: $("scenario").value });
+  };
+
+  async function command(line) {
+    const [verb, name, ...args] = line.split(/\s+/);
+    if (verb === "help") return "list [filter] | get <name> | set <name> <value>\nmode <name> released|persistent|saved|default [value]\ndelete <name> | scenarios | scenario <name> | clear";
+    if (verb === "list") return rows.filter(row => !name || row.name.toLowerCase().includes(name.toLowerCase()))
+      .map(row => row.name).sort((a, b) => a.localeCompare(b)).join("\n") || "No matching variables.";
+    if (verb === "scenarios") return Array.from($("scenario").options, option => option.value).join("\n");
+    const row = rows.find(row => row.name.toLowerCase() === name?.toLowerCase());
+    if (verb === "get" && row) return row.name + " = " + format(row.value, true) + " [" + row.mode + "]";
+    if (!["set", "mode", "delete", "scenario"].includes(verb)) return "Unknown command or variable. Type help.";
+    if (!canEdit) return "Permission denied.";
+    if (verb === "scenario") return change({ operation: "scenario", scenario: name });
+    if (!row || row.kind === "readonly") return "Unknown or read-only variable.";
+    const body = { operation: verb, name: row.name };
+    if (verb === "set") body.value = typedValue(row, args.join(" "));
+    if (verb === "mode") {
+      body.mode = args.shift();
+      if (!modes.includes(body.mode)) return "Choose released, persistent, saved, or default.";
+      if (args.length) body.value = typedValue(row, args.join(" "));
+    }
+    return change(body);
+  }
+
+  $("command-form").onsubmit = async event => {
+    event.preventDefault();
+    const input = $("command");
+    const line = input.value.trim();
+    if (!line || input.readOnly) return;
+    input.value = "";
+    const output = $("cli-output");
+    if (line === "clear") { output.textContent = ""; return; }
+    input.readOnly = true;
+    let result;
+    try { result = await command(line); }
+    catch (error) { result = error.message; }
+    output.textContent = (output.textContent + "\n> " + line + "\n" + result).slice(-40000);
+    output.scrollTop = output.scrollHeight;
+    input.readOnly = false;
+    input.focus();
+  };
+
+  document.addEventListener("click", event => {
+    if (!event.target.closest("#actions, #results button")) menu.hidden = true;
+  });
+  document.addEventListener("keydown", event => { if (event.key === "Escape") menu.hidden = true; });
+  for (const id of ["view", "sort", "descending", "search"]) $(id).addEventListener("input", render);
+
+  async function refresh() {
+    try {
+      const data = await request(eventsView ? "/api/events" : endpoint);
+      if (eventsView) {
+        $("events").textContent = data.events.map(event => event.created_at + " UTC  " + event.message).join("\n") || "No events recorded.";
+        return;
+      }
+      rows = data.variables;
+      canEdit = data.canEdit;
+      online = data.online;
+      $("connection").textContent = (online ? "Control room connected" : "Control room offline") + (canEdit ? " • Edit access" : " • Read-only access");
+      scenarioForm.hidden = !canEdit;
+      scenarioForm.querySelector("button").disabled = !online;
+      if (!$("scenario").options.length) {
+        for (const name of data.scenarios) $("scenario").append(element("option", name));
+      }
+      render();
+    } catch (error) { $("connection").textContent = error.message; }
+  }
+
+  async function poll() {
+    await refresh();
+    setTimeout(poll, 1000);
+  }
+  void poll();
 </script>
+</html>

@@ -1,3 +1,4 @@
+import { usePlantVariable, type PlantVariables } from "@/hooks/usePlantVariables";
 // Legacy duplicate renderer below is being phased out; active tab routes above are type-checked independently.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
@@ -288,54 +289,59 @@ export default function ReactorSimulator() {
   useEffect(() => {
     simulationPausedRef.current = simulationPaused || !sessionRestored;
   }, [simulationPaused, sessionRestored]);
-  const [temperature, setTemperature] = useState(25);
-  const [pressure, setPressure] = useState(101);
-  const [fuelLevel, setFuelLevel] = useState(100);
-  const [isRunning, setIsRunning] = useState(false);
-  const [gridSync, setGridSync] = useState(0);
-  const [turbineSpeed, setTurbineSpeed] = useState(0);
-  const [targetTurbineSpeed, setTargetTurbineSpeed] = useState(0);
-  const [valveValue, setValveValue] = useState(0);
-  const [valveDirection, setValveDirection] = useState(0);
-  const [mainSteamInletOpen, setMainSteamInletOpen] = useState(false);
-  const [bypassValve, setBypassValve] = useState(100);
-  const [bypassDirection, setBypassDirection] = useState(0);
-  const [reliefOpen, setReliefOpen] = useState(false);
-  const [reliefValveB, setReliefValveB] = useState(false);
-  const [exciterOn, setExciterOn] = useState(false);
-  const [pressureRate, setPressureRate] = useState(0);
-  const [turbinePressureAuto, setTurbinePressureAuto] = useState(false);
-  const [turbineRpmAuto, setTurbineRpmAuto] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [pump1Online, setPump1Online] = useState(false);
-  const [pump2Online, setPump2Online] = useState(false);
-  const [daIntakeOpen, setDaIntakeOpen] = useState(true);
-  const [daOutputOpen, setDaOutputOpen] = useState(true);
-  const [daIntakeValve, setDaIntakeValve] = useState(100);
-  const [daOuttakeValve, setDaOuttakeValve] = useState(100);
-  const [daIntakeDirection, setDaIntakeDirection] = useState(0);
-  const [daOuttakeDirection, setDaOuttakeDirection] = useState(0);
-  const [daTemperature, setDaTemperature] = useState(110);
-  const [daPressure, setDaPressure] = useState(1.5);
-  const [daBypassValve, setDaBypassValve] = useState(false);
-  const [daMainAirValve, setDaMainAirValve] = useState(true);
+  const plantVariables = useRef<PlantVariables>({ bindings: {}, holds: {} }).current;
+  const [syncRPM] = usePlantVariable<number>(plantVariables, "turbine.sync_rpm", 3000, "persistent", [500, 3000]);
+  const [lowLevelTrip] = usePlantVariable<number>(plantVariables, "reactor.low_level_trip", -4, "persistent", [-5, 0]);
+  const [heldAprm, setHeldAprm] = useState<number | null>(null);
+  const temperatureOverwrite = useRef<number | undefined>(undefined);
+  const [temperature, setTemperature] = usePlantVariable<number>(plantVariables, "reactor.temp", 25, "released", [20, 1800]);
+  const [pressure, setPressure] = usePlantVariable<number>(plantVariables, "reactor.pressure", 101, "released", [101, 12000]);
+  const [fuelLevel, setFuelLevel] = usePlantVariable<number>(plantVariables, "reactor.fuel", 100, "released", [0, 100]);
+  const [isRunning, setIsRunning] = usePlantVariable<boolean>(plantVariables, "reactor.running", false);
+  const [gridSync, setGridSync] = usePlantVariable<number>(plantVariables, "gridSync", 0);
+  const [turbineSpeed, setTurbineSpeed] = usePlantVariable<number>(plantVariables, "turbineSpeed", 0);
+  const [targetTurbineSpeed, setTargetTurbineSpeed] = usePlantVariable<number>(plantVariables, "targetTurbineSpeed", 0);
+  const [valveValue, setValveValue] = usePlantVariable<number>(plantVariables, "valveValue", 0);
+  const [valveDirection, setValveDirection] = usePlantVariable<number>(plantVariables, "valveDirection", 0);
+  const [mainSteamInletOpen, setMainSteamInletOpen] = usePlantVariable<boolean>(plantVariables, "mainSteamInletOpen", false);
+  const [bypassValve, setBypassValve] = usePlantVariable<number>(plantVariables, "bypassValve", 100);
+  const [bypassDirection, setBypassDirection] = usePlantVariable<number>(plantVariables, "bypassDirection", 0);
+  const [reliefOpen, setReliefOpen] = usePlantVariable<boolean>(plantVariables, "reliefOpen", false);
+  const [reliefValveB, setReliefValveB] = usePlantVariable<boolean>(plantVariables, "reliefValveB", false);
+  const [exciterOn, setExciterOn] = usePlantVariable<boolean>(plantVariables, "exciterOn", false);
+  const [pressureRate, setPressureRate] = usePlantVariable<number>(plantVariables, "pressureRate", 0);
+  const [turbinePressureAuto, setTurbinePressureAuto] = usePlantVariable<boolean>(plantVariables, "turbinePressureAuto", false);
+  const [turbineRpmAuto, setTurbineRpmAuto] = usePlantVariable<boolean>(plantVariables, "turbineRpmAuto", false);
+  const [isLocked, setIsLocked] = usePlantVariable<boolean>(plantVariables, "isLocked", false);
+  const [pump1Online, setPump1Online] = usePlantVariable<boolean>(plantVariables, "pump1Online", false);
+  const [pump2Online, setPump2Online] = usePlantVariable<boolean>(plantVariables, "pump2Online", false);
+  const [daIntakeOpen, setDaIntakeOpen] = usePlantVariable<boolean>(plantVariables, "daIntakeOpen", true);
+  const [daOutputOpen, setDaOutputOpen] = usePlantVariable<boolean>(plantVariables, "daOutputOpen", true);
+  const [daIntakeValve, setDaIntakeValve] = usePlantVariable<number>(plantVariables, "daIntakeValve", 100);
+  const [daOuttakeValve, setDaOuttakeValve] = usePlantVariable<number>(plantVariables, "daOuttakeValve", 100);
+  const [daIntakeDirection, setDaIntakeDirection] = usePlantVariable<number>(plantVariables, "daIntakeDirection", 0);
+  const [daOuttakeDirection, setDaOuttakeDirection] = usePlantVariable<number>(plantVariables, "daOuttakeDirection", 0);
+  const [daTemperature, setDaTemperature] = usePlantVariable<number>(plantVariables, "daTemperature", 110);
+  const [daPressure, setDaPressure] = usePlantVariable<number>(plantVariables, "daPressure", 1.5);
+  const [daBypassValve, setDaBypassValve] = usePlantVariable<boolean>(plantVariables, "daBypassValve", false);
+  const [daMainAirValve, setDaMainAirValve] = usePlantVariable<boolean>(plantVariables, "daMainAirValve", true);
   const [daRuptureDisk, setDaRuptureDisk] = useState<"intact" | "ruptured" | "removed" | "replaced">("intact");
-  const [daAuto, setDaAuto] = useState(false);
-  const [recircPumpA, setRecircPumpA] = useState(false);
-  const [recircPumpB, setRecircPumpB] = useState(false);
-  const [recircSpeedA, setRecircSpeedA] = useState(0);
-  const [recircSpeedB, setRecircSpeedB] = useState(0);
+  const [daAuto, setDaAuto] = usePlantVariable<boolean>(plantVariables, "daAuto", false);
+  const [recircPumpA, setRecircPumpA] = usePlantVariable<boolean>(plantVariables, "recircPumpA", false);
+  const [recircPumpB, setRecircPumpB] = usePlantVariable<boolean>(plantVariables, "recircPumpB", false);
+  const [recircSpeedA, setRecircSpeedA] = usePlantVariable<number>(plantVariables, "recircSpeedA", 0);
+  const [recircSpeedB, setRecircSpeedB] = usePlantVariable<number>(plantVariables, "recircSpeedB", 0);
   const [malfunctions, setMalfunctions] = useState<Malfunctions>({
     enabled: false,
     recircAFlowLossActive: false,
     recircBFlowLossActive: false,
   });
-  const [gridDemandMW, setGridDemandMW] = useState(newGridDemand);
-  const [nextGridDemandMW, setNextGridDemandMW] = useState(newGridDemand);
-  const [secondsToDemandChange, setSecondsToDemandChange] = useState(newDemandInterval);
-  const [randomEventsEnabled, setRandomEventsEnabled] = useState(false);
+  const [gridDemandMW, setGridDemandMW] = usePlantVariable<number>(plantVariables, "gridDemandMW", newGridDemand);
+  const [nextGridDemandMW, setNextGridDemandMW] = usePlantVariable<number>(plantVariables, "nextGridDemandMW", newGridDemand);
+  const [secondsToDemandChange, setSecondsToDemandChange] = usePlantVariable<number>(plantVariables, "secondsToDemandChange", newDemandInterval);
+  const [randomEventsEnabled, setRandomEventsEnabled] = usePlantVariable<boolean>(plantVariables, "malfunctions_enabled", false, "saved");
   const [pendingGridEvent, setPendingGridEvent] = useState<"loop" | null>(null);
-  const [offsitePowerAvailable, setOffsitePowerAvailable] = useState(true);
+  const [offsitePowerAvailable, setOffsitePowerAvailable] = usePlantVariable<boolean>(plantVariables, "offsitePowerAvailable", true);
   const [offsiteCountdown, setOffsiteCountdown] = useState<number | null>(null);
   const randomEventsEnabledRef = useRef(randomEventsEnabled);
   const pendingGridEventRef = useRef<"loop" | null>(pendingGridEvent);
@@ -352,57 +358,57 @@ export default function ReactorSimulator() {
   const [leaderboard, setLeaderboard] = useState<Record<string, { points: number; unit1?: number; unit2?: number; lastSeen: number }>>(() => {
     try { return JSON.parse(localStorage.getItem("unit2-operator-scores") || "{}"); } catch { return {}; }
   });
-  const [daFastCloseHeld, setDaFastCloseHeld] = useState(false);
+  const [daFastCloseHeld, setDaFastCloseHeld] = usePlantVariable<boolean>(plantVariables, "daFastCloseHeld", false);
   const [rods, setRods] = useState<ControlRod[]>(createInitialRods);
   const [selectedRodId, setSelectedRodId] = useState("A1");
-  const [mode, setMode] = useState<ReactorMode>("SD");
-  const [iprCycle, setIprCycle] = useState(1);
+  const [mode, setMode] = usePlantVariable<ReactorMode>(plantVariables, "reactor.mode", "SD", "released", undefined, ["SD", "SRM", "IPR", "RUN"]);
+  const [iprCycle, setIprCycle] = usePlantVariable<number>(plantVariables, "iprCycle", 1);
   // The IRM range lever only changes the monitor scale. iprCycle remains the
   // independent physical startup programme that establishes the withdrawal block.
-  const [irmRange, setIrmRange] = useState(1);
-  const [rodDirection, setRodDirection] = useState(0);
+  const [irmRange, setIrmRange] = usePlantVariable<number>(plantVariables, "irmRange", 1);
+  const [rodDirection, setRodDirection] = usePlantVariable<number>(plantVariables, "rodDirection", 0);
   const [rodBlockAlarm, setRodBlockAlarm] = useState<"SRM" | "IPR" | null>(null);
   const [selectionScope, setSelectionScope] =
     useState<RodSelectionScope>("rod");
-  const [reactorPeriod, setReactorPeriod] = useState(999);
-  const [periodRecirculationAprm, setPeriodRecirculationAprm] = useState(0);
-  const [autoEnabled, setAutoEnabled] = useState(false);
-  const [autoTarget, setAutoTarget] = useState(1);
-  const [autoSpeed, setAutoSpeed] = useState<AutoSpeed>("medium");
-  const [autoMode, setAutoMode] = useState<"rods" | "recirculation">("rods");
+  const [reactorPeriod, setReactorPeriod] = usePlantVariable<number>(plantVariables, "reactorPeriod", 999);
+  const [periodRecirculationAprm, setPeriodRecirculationAprm] = usePlantVariable<number>(plantVariables, "periodRecirculationAprm", 0);
+  const [autoEnabled, setAutoEnabled] = usePlantVariable<boolean>(plantVariables, "autoEnabled", false);
+  const [autoTarget, setAutoTarget] = usePlantVariable<number>(plantVariables, "autoTarget", 1);
+  const [autoSpeed, setAutoSpeed] = usePlantVariable<AutoSpeed>(plantVariables, "autoSpeed", "medium", "released", undefined, ["slow", "medium", "fast"]);
+  const [autoMode, setAutoMode] = usePlantVariable<"rods" | "recirculation">(plantVariables, "autoMode", "rods", "released", undefined, ["rods", "recirculation"]);
   const [autoMessage, setAutoMessage] = useState("Auto APRM is standing by.");
-  const [recirculationAprm, setRecirculationAprm] = useState(0);
+  const [recirculationAprm, setRecirculationAprm] = usePlantVariable<number>(plantVariables, "recirculationAprm", 0);
   const [physicsTuning, setPhysicsTuning] = useState<PhysicsTuning>({
     thermalResponse: 1,
     steamProduction: 1,
     steamRemoval: 1,
     tripTemperature: 1100,
   });
-  const [reactorLevel, setReactorLevel] = useState(0);
-  const [hotwellLevel, setHotwellLevel] = useState(0);
-  const [deaeratorLevel, setDeaeratorLevel] = useState(0);
-  const [condensateFlow, setCondensateFlow] = useState(0);
-  const [condensatePumpBFlow, setCondensatePumpBFlow] = useState(0);
-  const [feedwaterFlow, setFeedwaterFlow] = useState(0);
-  const [feedwaterPumpBFlow, setFeedwaterPumpBFlow] = useState(0);
-  const [feedwaterAuxAuto, setFeedwaterAuxAuto] = useState(true);
-  const [feedwaterMotorCoolingA, setFeedwaterMotorCoolingA] = useState(35);
-  const [feedwaterMotorCoolingB, setFeedwaterMotorCoolingB] = useState(35);
-  const [feedwaterOilPreheatA, setFeedwaterOilPreheatA] = useState(false);
-  const [feedwaterOilPreheatB, setFeedwaterOilPreheatB] = useState(false);
-  const [condenserVacuum, setCondenserVacuum] = useState(1);
-  const [condenserPumpOn, setCondenserPumpOn] = useState(false);
-  const [condenserPumpB, setCondenserPumpB] = useState(false);
-  const [condenserValve, setCondenserValve] = useState(0);
-  const [condenserValveDirection, setCondenserValveDirection] = useState(0);
-  const [condenserAuto, setCondenserAuto] = useState(false);
-  const [carAOn, setCarAOn] = useState(false);
-  const [carBOn, setCarBOn] = useState(false);
-  const [sjaeOn, setSjaeOn] = useState(false);
-  const [mccLevel, setMccLevel] = useState(100);
-  const [mccPumpOn, setMccPumpOn] = useState(false);
-  const [mccAutoOn, setMccAutoOn] = useState(false);
-  const [scramPressed, setScramPressed] = useState(false);
+  const [reactorLevel, setReactorLevel] = usePlantVariable<number>(plantVariables, "reactor.level", 0, "released", [-5, 6]);
+  const [hotwellLevel, setHotwellLevel] = usePlantVariable<number>(plantVariables, "hotwellLevel", 0);
+  const [deaeratorLevel, setDeaeratorLevel] = usePlantVariable<number>(plantVariables, "deaeratorLevel", 0);
+  const [condensateFlow, setCondensateFlow] = usePlantVariable<number>(plantVariables, "condensateFlow", 0);
+  const [condensatePumpBFlow, setCondensatePumpBFlow] = usePlantVariable<number>(plantVariables, "condensatePumpBFlow", 0);
+  const [feedwaterFlow, setFeedwaterFlow] = usePlantVariable<number>(plantVariables, "feedwaterFlow", 0);
+  const [feedwaterPumpBFlow, setFeedwaterPumpBFlow] = usePlantVariable<number>(plantVariables, "feedwaterPumpBFlow", 0);
+  const [feedwaterAuxAuto, setFeedwaterAuxAuto] = usePlantVariable<boolean>(plantVariables, "feedwaterAuxAuto", true);
+  const [feedwaterMotorCoolingA, setFeedwaterMotorCoolingA] = usePlantVariable<number>(plantVariables, "feedwaterMotorCoolingA", 35);
+  const [feedwaterMotorCoolingB, setFeedwaterMotorCoolingB] = usePlantVariable<number>(plantVariables, "feedwaterMotorCoolingB", 35);
+  const [feedwaterOilPreheatA, setFeedwaterOilPreheatA] = usePlantVariable<boolean>(plantVariables, "feedwaterOilPreheatA", false);
+  const [feedwaterOilPreheatB, setFeedwaterOilPreheatB] = usePlantVariable<boolean>(plantVariables, "feedwaterOilPreheatB", false);
+  const [condenserVacuum, setCondenserVacuum] = usePlantVariable<number>(plantVariables, "condenserVacuum", 1);
+  const [condenserPumpOn, setCondenserPumpOn] = usePlantVariable<boolean>(plantVariables, "condenserPumpOn", false);
+  const [condenserPumpB, setCondenserPumpB] = usePlantVariable<boolean>(plantVariables, "condenserPumpB", false);
+  const [condenserValve, setCondenserValve] = usePlantVariable<number>(plantVariables, "condenserValve", 0);
+  const [condenserValveDirection, setCondenserValveDirection] = usePlantVariable<number>(plantVariables, "condenserValveDirection", 0);
+  const [condenserAuto, setCondenserAuto] = usePlantVariable<boolean>(plantVariables, "condenserAuto", false);
+  const [carAOn, setCarAOn] = usePlantVariable<boolean>(plantVariables, "carAOn", false);
+  const [carBOn, setCarBOn] = usePlantVariable<boolean>(plantVariables, "carBOn", false);
+  const [sjaeOn, setSjaeOn] = usePlantVariable<boolean>(plantVariables, "sjaeOn", false);
+  const [mccLevel, setMccLevel] = usePlantVariable<number>(plantVariables, "mccLevel", 100);
+  const [mccPumpOn, setMccPumpOn] = usePlantVariable<boolean>(plantVariables, "mccPumpOn", false);
+  const [mccAutoOn, setMccAutoOn] = usePlantVariable<boolean>(plantVariables, "mccAutoOn", false);
+  const [scramPressed, setScramPressed] = usePlantVariable<boolean>(plantVariables, "scramPressed", false);
   const [rpsTrips, setRpsTrips] = useState<Record<string, boolean>>({
     "REACTOR LEVEL": false,
     "MANUAL TRIP": false,
@@ -421,63 +427,61 @@ export default function ReactorSimulator() {
   const [event, setEvent] = useState(
     "Cold shutdown — select SRM to begin startup.",
   );
-  const [condenserCirculationPumpOn, setCondenserCirculationPumpOn] =
-    useState(false);
-  const [condenserCirculationPumpB, setCondenserCirculationPumpB] =
-    useState(false);
-  const [startupBusA, setStartupBusA] = useState(false);
-  const [busATransformer, setBusATransformer] = useState(false);
-  const [turbineBusB, setTurbineBusB] = useState(false);
-  const [safetyBusS, setSafetyBusS] = useState(false);
-  const [edgBreaker, setEdgBreaker] = useState(false);
-  const [edgAuto, setEdgAuto] = useState(true);
+  const [condenserCirculationPumpOn, setCondenserCirculationPumpOn] = usePlantVariable<boolean>(plantVariables, "condenserCirculationPumpOn", false);
+  const [condenserCirculationPumpB, setCondenserCirculationPumpB] = usePlantVariable<boolean>(plantVariables, "condenserCirculationPumpB", false);
+  const [startupBusA, setStartupBusA] = usePlantVariable<boolean>(plantVariables, "startupBusA", false);
+  const [busATransformer, setBusATransformer] = usePlantVariable<boolean>(plantVariables, "busATransformer", false);
+  const [turbineBusB, setTurbineBusB] = usePlantVariable<boolean>(plantVariables, "turbineBusB", false);
+  const [safetyBusS, setSafetyBusS] = usePlantVariable<boolean>(plantVariables, "safetyBusS", false);
+  const [edgBreaker, setEdgBreaker] = usePlantVariable<boolean>(plantVariables, "edgBreaker", false);
+  const [edgAuto, setEdgAuto] = usePlantVariable<boolean>(plantVariables, "edgAuto", true);
   const [edgSelected, setEdgSelected] = useState<"u2a" | "u2b">("u2a");
-  const [edgIgnitionBreaker, setEdgIgnitionBreaker] = useState(false);
-  const [edgOutputBreaker, setEdgOutputBreaker] = useState(false);
-  const [edgStartRequested, setEdgStartRequested] = useState(false);
-  const [edgRpm, setEdgRpm] = useState(0);
-  const [edgTankLevel, setEdgTankLevel] = useState(100);
-  const [edgFuelA, setEdgFuelA] = useState(100);
-  const [edgFuelB, setEdgFuelB] = useState(100);
-  const [edgMainFuelValve, setEdgMainFuelValve] = useState(false);
-  const [edgMainFuelPump, setEdgMainFuelPump] = useState(false);
-  const [edgFuelValveA, setEdgFuelValveA] = useState(false);
-  const [edgFuelValveB, setEdgFuelValveB] = useState(false);
-  const [edgRefuellingSeconds, setEdgRefuellingSeconds] = useState(0);
-  const [acDcInterlock, setAcDcInterlock] = useState(false);
-  const [safetyToDcBreaker, setSafetyToDcBreaker] = useState(false);
-  const [busEToDcBreaker, setBusEToDcBreaker] = useState(false);
-  const [mainBatteryCharge, setMainBatteryCharge] = useState(100);
-  const [rolldownProtection, setRolldownProtection] = useState(true);
-  const [cstLevel, setCstLevel] = useState(8);
-  const [cstMakeup, setCstMakeup] = useState(false);
-  const [cstDrain, setCstDrain] = useState(false);
-  const [hotwellMakeup, setHotwellMakeup] = useState(false);
-  const [hotwellDrain, setHotwellDrain] = useState(false);
-  const [rcicValve, setRcicValve] = useState(false);
-  const [rcicFlow, setRcicFlow] = useState(0);
-  const [eccsPumpA, setEccsPumpA] = useState(false);
-  const [eccsPumpB, setEccsPumpB] = useState(false);
-  const [eccsPumpAMode, setEccsPumpAMode] = useState<"RHR" | "LPCI">("RHR");
-  const [eccsPumpBMode, setEccsPumpBMode] = useState<"RHR" | "LPCI">("RHR");
+  const [edgIgnitionBreaker, setEdgIgnitionBreaker] = usePlantVariable<boolean>(plantVariables, "edgIgnitionBreaker", false);
+  const [edgOutputBreaker, setEdgOutputBreaker] = usePlantVariable<boolean>(plantVariables, "edgOutputBreaker", false);
+  const [edgStartRequested, setEdgStartRequested] = usePlantVariable<boolean>(plantVariables, "edgStartRequested", false);
+  const [edgRpm, setEdgRpm] = usePlantVariable<number>(plantVariables, "edgRpm", 0);
+  const [edgTankLevel, setEdgTankLevel] = usePlantVariable<number>(plantVariables, "edgTankLevel", 100);
+  const [edgFuelA, setEdgFuelA] = usePlantVariable<number>(plantVariables, "edgFuelA", 100);
+  const [edgFuelB, setEdgFuelB] = usePlantVariable<number>(plantVariables, "edgFuelB", 100);
+  const [edgMainFuelValve, setEdgMainFuelValve] = usePlantVariable<boolean>(plantVariables, "edgMainFuelValve", false);
+  const [edgMainFuelPump, setEdgMainFuelPump] = usePlantVariable<boolean>(plantVariables, "edgMainFuelPump", false);
+  const [edgFuelValveA, setEdgFuelValveA] = usePlantVariable<boolean>(plantVariables, "edgFuelValveA", false);
+  const [edgFuelValveB, setEdgFuelValveB] = usePlantVariable<boolean>(plantVariables, "edgFuelValveB", false);
+  const [edgRefuellingSeconds, setEdgRefuellingSeconds] = usePlantVariable<number>(plantVariables, "edgRefuellingSeconds", 0);
+  const [acDcInterlock, setAcDcInterlock] = usePlantVariable<boolean>(plantVariables, "acDcInterlock", false);
+  const [safetyToDcBreaker, setSafetyToDcBreaker] = usePlantVariable<boolean>(plantVariables, "safetyToDcBreaker", false);
+  const [busEToDcBreaker, setBusEToDcBreaker] = usePlantVariable<boolean>(plantVariables, "busEToDcBreaker", false);
+  const [mainBatteryCharge, setMainBatteryCharge] = usePlantVariable<number>(plantVariables, "mainBatteryCharge", 100);
+  const [rolldownProtection, setRolldownProtection] = usePlantVariable<boolean>(plantVariables, "rolldownProtection", true);
+  const [cstLevel, setCstLevel] = usePlantVariable<number>(plantVariables, "cstLevel", 8);
+  const [cstMakeup, setCstMakeup] = usePlantVariable<boolean>(plantVariables, "cstMakeup", false);
+  const [cstDrain, setCstDrain] = usePlantVariable<boolean>(plantVariables, "cstDrain", false);
+  const [hotwellMakeup, setHotwellMakeup] = usePlantVariable<boolean>(plantVariables, "hotwellMakeup", false);
+  const [hotwellDrain, setHotwellDrain] = usePlantVariable<boolean>(plantVariables, "hotwellDrain", false);
+  const [rcicValve, setRcicValve] = usePlantVariable<boolean>(plantVariables, "rcicValve", false);
+  const [rcicFlow, setRcicFlow] = usePlantVariable<number>(plantVariables, "rcicFlow", 0);
+  const [eccsPumpA, setEccsPumpA] = usePlantVariable<boolean>(plantVariables, "eccsPumpA", false);
+  const [eccsPumpB, setEccsPumpB] = usePlantVariable<boolean>(plantVariables, "eccsPumpB", false);
+  const [eccsPumpAMode, setEccsPumpAMode] = usePlantVariable<"RHR" | "LPCI">(plantVariables, "eccs.a.mode", "RHR", "released", undefined, ["RHR", "LPCI"]);
+  const [eccsPumpBMode, setEccsPumpBMode] = usePlantVariable<"RHR" | "LPCI">(plantVariables, "eccs.b.mode", "RHR", "released", undefined, ["RHR", "LPCI"]);
   const [srvOpen, setSrvOpen] = useState<boolean[]>(() => Array(6).fill(false));
-  const [adsActive, setAdsActive] = useState(false);
+  const [adsActive, setAdsActive] = usePlantVariable<boolean>(plantVariables, "adsActive", false);
   const [lubePumpSource, setLubePumpSource] = useState<
     "aux" | "emergency" | "off"
   >("off");
   const [hydraulicPumpSource, setHydraulicPumpSource] = useState<
     "aux" | "emergency" | "off"
   >("off");
-  const [coldOilValve, setColdOilValve] = useState(0);
-  const [warmOilValve, setWarmOilValve] = useState(0);
-  const [turningGear, setTurningGear] = useState(false);
-  const [preheatValve, setPreheatValve] = useState(false);
-  const [steamSealing, setSteamSealing] = useState(false);
-  const [steamSealingLeak, setSteamSealingLeak] = useState(false);
-  const [polisherTrainA, setPolisherTrainA] = useState(false);
-  const [polisherTrainB, setPolisherTrainB] = useState(false);
-  const [polisherAuto, setPolisherAuto] = useState(false);
-  const [polisherBypass, setPolisherBypass] = useState(false);
+  const [coldOilValve, setColdOilValve] = usePlantVariable<number>(plantVariables, "coldOilValve", 0);
+  const [warmOilValve, setWarmOilValve] = usePlantVariable<number>(plantVariables, "warmOilValve", 0);
+  const [turningGear, setTurningGear] = usePlantVariable<boolean>(plantVariables, "turningGear", false);
+  const [preheatValve, setPreheatValve] = usePlantVariable<boolean>(plantVariables, "preheatValve", false);
+  const [steamSealing, setSteamSealing] = usePlantVariable<boolean>(plantVariables, "steamSealing", false);
+  const [steamSealingLeak, setSteamSealingLeak] = usePlantVariable<boolean>(plantVariables, "steamSealingLeak", false);
+  const [polisherTrainA, setPolisherTrainA] = usePlantVariable<boolean>(plantVariables, "polisherTrainA", false);
+  const [polisherTrainB, setPolisherTrainB] = usePlantVariable<boolean>(plantVariables, "polisherTrainB", false);
+  const [polisherAuto, setPolisherAuto] = usePlantVariable<boolean>(plantVariables, "polisherAuto", false);
+  const [polisherBypass, setPolisherBypass] = usePlantVariable<boolean>(plantVariables, "polisherBypass", false);
   const [polisherTarget, setPolisherTarget] = useState<PolisherTarget>("A");
   const [polisherTankSelection, setPolisherTankSelection] = useState<1 | 2 | 3>(1);
   const [polisherTanks, setPolisherTanks] = useState<RegenTank[]>([
@@ -501,12 +505,12 @@ export default function ReactorSimulator() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [isPhysicsAuthority]);
-  const [oilTemperature, setOilTemperature] = useState(25);
-  const [turbineMetalTemperature, setTurbineMetalTemperature] = useState(25);
+  const [oilTemperature, setOilTemperature] = usePlantVariable<number>(plantVariables, "oilTemperature", 25);
+  const [turbineMetalTemperature, setTurbineMetalTemperature] = usePlantVariable<number>(plantVariables, "turbineMetalTemperature", 25);
   const [turbineSmoke, setTurbineSmoke] = useState<
     "idle" | "countdown" | "aborted" | "released"
   >("idle");
-  const [agentSeconds, setAgentSeconds] = useState(10);
+  const [agentSeconds, setAgentSeconds] = usePlantVariable<number>(plantVariables, "agentSeconds", 10);
   const previousSync = useRef(false);
   const daFastCloseAudio = useRef<{
     context: AudioContext | null;
@@ -616,7 +620,7 @@ export default function ReactorSimulator() {
   // islanded inside the ±50 RPM sync window. A closed transformer breaker by
   // itself is never a source of power.
   const turbineBusEligible =
-    isLocked || Math.abs(turbineSpeed * 45 - 3000) <= 50;
+    isLocked || Math.abs(turbineSpeed * 45 - syncRPM) <= 50;
   const locallySuppliedBusA =
     (offsitePowerAvailable && startupBusA) || (busATransformer && turbineBusEligible);
   const interlockSource = plantAssignment && sharedPlant.room?.interlock_enabled &&
@@ -739,7 +743,7 @@ export default function ReactorSimulator() {
   // still protected by the 105% operating limit below.
   const recirculationTargetAprm = (recircAFlow + recircBFlow) * 0.0125;
   const tutorialAprmHold = tutorialEnabled && (tutorialLevel === 5 || tutorialLevel === 6 || tutorialLevel === 7) ? 20 : null;
-  const aprm = tutorialAprmHold ?? clamp(
+  const aprm = heldAprm ?? tutorialAprmHold ?? clamp(
     (Number.isFinite(rodAprm) ? rodAprm : 0) +
       (Number.isFinite(recirculationAprm) ? recirculationAprm : 0),
     0,
@@ -2945,6 +2949,7 @@ export default function ReactorSimulator() {
     if (!operatorName || !scoreRate) return;
     const tick = window.setInterval(() => {
       const award = () => setLeaderboard((previous) => {
+        if (typeof plantVariables.holds.points === "number") return previous;
         const next = {
           ...previous,
           [operatorName]: {
@@ -3019,6 +3024,7 @@ export default function ReactorSimulator() {
       aprm,
       previousAprm: previousAprmForRps.current,
       reactorLevelM: reactorLevel,
+      lowLevelTripM: lowLevelTrip,
       pressureKpa: pressure,
       reactorPeriodSeconds: reactorPeriod,
       mode,
@@ -3038,6 +3044,7 @@ export default function ReactorSimulator() {
     }
   }, [
     reactorLevel,
+    lowLevelTrip,
     aprm,
     pressure,
     isRunning,
@@ -3093,6 +3100,13 @@ export default function ReactorSimulator() {
     pump2Online,
     isLocked,
     targetTurbineSpeed,
+    synchronizedSpeed: syncRPM / 45,
+    takeTemperatureOverride: () => {
+      const value = temperatureOverwrite.current;
+      temperatureOverwrite.current = undefined;
+      const held = plantVariables.holds["reactor.temp"];
+      return typeof held === "number" ? held : value;
+    },
     thermalResponse: physicsTuning.thermalResponse,
     steamProductionMultiplier: physicsTuning.steamProduction,
     steamRemovalMultiplier: physicsTuning.steamRemoval,
@@ -3144,6 +3158,7 @@ export default function ReactorSimulator() {
     turbineSpeed,
     targetTurbineSpeed,
     isLocked,
+    syncRPM,
   );
   useEffect(() => {
     if (!turbineRpmAuto || !isRunning || !mainSteamInletOpen || isLocked) {
@@ -3153,7 +3168,7 @@ export default function ReactorSimulator() {
       return;
     }
     const governor = window.setInterval(() => {
-      const rpmError = 3000 - actualRPM;
+      const rpmError = syncRPM - actualRPM;
       const pressureError = pressure - 7100;
       const deliberateValveMove = valveDirection !== 0 || bypassDirection !== 0;
       const severeDeviation = Math.abs(rpmError) > 75 || Math.abs(pressureError) > 900 || Math.abs(pressureRate) > 400;
@@ -3162,8 +3177,8 @@ export default function ReactorSimulator() {
         // Island governor hold: preserve the established steam admission and
         // pin shaft speed at nominal frequency until an operator action or a
         // truly significant plant disturbance demands renewed regulation.
-        setTurbineSpeed(66.67);
-        setTargetTurbineSpeed(66.67);
+        setTurbineSpeed(syncRPM / 45);
+        setTargetTurbineSpeed(syncRPM / 45);
         return;
       }
       if (Math.abs(rpmError) <= 5) {
@@ -3213,7 +3228,7 @@ export default function ReactorSimulator() {
       });
     }, 125);
     return () => window.clearInterval(governor);
-  }, [turbineRpmAuto, isRunning, mainSteamInletOpen, isLocked, actualRPM, pressure, pressureRate, turbineSteamFlow, valveDirection, bypassDirection, thermalOutput.steamKgS, steamPressureFactor]);
+  }, [turbineRpmAuto, isRunning, mainSteamInletOpen, isLocked, actualRPM, syncRPM, pressure, pressureRate, turbineSteamFlow, valveDirection, bypassDirection, thermalOutput.steamKgS, steamPressureFactor]);
   const lubePressure =
     simpleMode ||
     lubePumpSource === "aux" ||
@@ -3394,7 +3409,7 @@ export default function ReactorSimulator() {
   };
   const resetTrips = () => {
     if (
-      reactorLevel < -4 ||
+      reactorLevel < lowLevelTrip ||
       mccLevel < 15 ||
       pressure >= 10000 ||
       (reactorPeriod > 0 && reactorPeriod < 20) ||
@@ -3746,7 +3761,7 @@ export default function ReactorSimulator() {
         setBypassValve(presetBypassValve); setBypassDirection(0); setValveValue(presetMainValve); setValveDirection(0);
         setSrvOpen((previous) => previous.map(() => false)); setAdsActive(false);
         if (turbineOnline) {
-          setExciterOn(true); setTurbineSpeed(66.67); setTargetTurbineSpeed(66.67); setIsLocked(true);
+          setExciterOn(true); setTurbineSpeed(syncRPM / 45); setTargetTurbineSpeed(syncRPM / 45); setIsLocked(true);
           setBusATransformer(true); setStartupBusA(false); setTurbineBusB(true);
           setGridSync(100);
         } else {
@@ -3997,22 +4012,102 @@ export default function ReactorSimulator() {
   workstationScram.current = scram;
   const workstationCommand = useRef(runConsoleCommand);
   workstationCommand.current = runConsoleCommand;
+  const workstationSession = useRef("");
+  const workstationAck = useRef(new Set<string>());
+  const applyWorkstationAprm = (value: number) => {
+    const rodPower = value - recirculationAprm;
+    rodAprmRef.current = rodPower;
+    rodKineticsRef.current.origin = rodPower;
+    rodKineticsRef.current.startedAt = performance.now();
+    setRodAprm(rodPower);
+  };
+  plantVariables.bindings["reactor.aprm"] = {
+    value: aprm, kind: "number", bounds: [0, 105],
+    apply: value => applyWorkstationAprm(Number(value)),
+    reset: () => applyWorkstationAprm(getAprm(rods) + recirculationAprm),
+  };
+  const applyPoints = (points: number) => {
+    if (!operatorName) return;
+    setLeaderboard(previous => {
+      const next = { ...previous, [operatorName]: { ...previous[operatorName], points, lastSeen: Date.now() } };
+      localStorage.setItem("unit2-operator-scores", JSON.stringify(next));
+      return next;
+    });
+  };
+  if (operatorName) {
+    plantVariables.bindings.points = {
+      value: operatorPoints, kind: "number", default: "saved", bounds: [0, 1e9],
+      apply: value => applyPoints(Number(value)), reset: () => applyPoints(0),
+    };
+  }
+  for (const [name, value] of Object.entries({
+    "reactor.rods": rods, "reactor.trips": rpsTrips,
+    "reactor.rodaprm": rodAprm, "reactor.thermal": thermalOutput, "reactor.physics": physicsTuning,
+    "turbine.rpm": actualRPM, "turbine.output": turbineOutputMW, "turbine.steamflow": turbineSteamFlow,
+    "recirc.flow.a": recircAFlow, "recirc.flow.b": recircBFlow,
+    "electrical.load.a": startupLoad, "electrical.load.b": busBLoad, "electrical.load.s": safetyLoad,
+    "electrical.bus.a": startupBusAvailable, "electrical.bus.b": busBAvailable,
+    "electrical.bus.s": safetyBusAvailable, "electrical.dc": dcBusAvailable,
+    "malfunctions.state": malfunctions, "polisher.tanks": polisherTanks, "reactor.srv": srvOpen,
+  })) {
+    plantVariables.bindings[name] = { value, kind: "readonly" };
+  }
   useEffect(() => {
     if (!sessionRestored || secondaryWindow || !isPhysicsAuthority || stationControlsLocked ||
         !import.meta.env.PROD || window.location.hostname !== "127.0.0.1") return;
     const abort = new AbortController();
     let timer: number;
+    const kiosk = Boolean(sessionStorage.getItem("reactoros-debian-operator"));
+    if (kiosk && !workstationSession.current) workstationSession.current = crypto.randomUUID();
+    const acknowledge = (id: string) => {
+      const seen = workstationAck.current;
+      seen.add(id);
+      if (seen.size > 256) seen.delete(seen.values().next().value!);
+    };
     const exchange = async () => {
       try {
+        const variables = Object.fromEntries(Object.entries(plantVariables.bindings)
+          .map(([name, { value, kind, default: mode, bounds, choices }]) => [name, { value, kind, default: mode, bounds, choices }]));
         const reply = await fetch("/api/plant/sync", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(workstationState.current),
+          headers: {
+            "Content-Type": "application/json",
+            ...(kiosk ? { "X-ReactorOS-Session": sessionStorage.getItem("reactoros-terminal-token") || "" } : {}),
+          },
+          body: JSON.stringify({
+            ...workstationState.current,
+            ...(kiosk ? { catalog: { session: workstationSession.current, variables, ack: [...workstationAck.current] } } : {}),
+          }),
           signal: abort.signal,
         });
         if (reply.ok) {
           const commands = await reply.json();
           if (!abort.signal.aborted) {
+            if (commands.database) {
+              const { holds, operations, scenarios } = commands.database;
+              plantVariables.holds = holds;
+              setHeldAprm(typeof holds["reactor.aprm"] === "number" ? holds["reactor.aprm"] : null);
+              for (const [name, value] of Object.entries(holds)) {
+                const binding = plantVariables.bindings[name];
+                if (binding && name !== "reactor.aprm" && binding.value !== value)
+                  binding.apply?.(value as number | boolean | string);
+              }
+              for (const operation of operations) {
+                if (workstationAck.current.has(operation.id)) continue;
+                const binding = plantVariables.bindings[operation.name];
+                if (!binding) continue;
+                if (operation.name === "reactor.temp")
+                  temperatureOverwrite.current = operation.reset ? 25 : operation.value;
+                if (operation.reset) binding.reset?.();
+                else binding.apply?.(operation.value);
+                acknowledge(operation.id);
+              }
+              for (const scenario of scenarios) {
+                if (workstationAck.current.has(scenario.id)) continue;
+                setEvent(workstationCommand.current(`scenario ${scenario.name}`) || "Scenario loaded.");
+                acknowledge(scenario.id);
+              }
+            }
             for (const command of commands.overrides ?? []) {
               setEvent(workstationCommand.current(command) || "Live variable override applied.");
             }
@@ -4314,6 +4409,9 @@ export default function ReactorSimulator() {
         onClose={() => setConsoleOpen(false)}
         onIncomingCall={() => setConsoleOpen(true)}
         onCommand={runConsoleCommand}
+        onOpenDatabase={sessionStorage.getItem("reactoros-debian-operator")
+          ? () => Boolean(window.open("/plant-tools.html?tool=database"))
+          : undefined}
         plantAssignment={plantAssignment}
         liveStatus={`CLOCK ${simulationPaused ? "PAUSED" : "RUNNING"}\n\nREACTOR\nAPRM ${aprm.toFixed(2)}% · ${temperature.toFixed(1)} °C\nRPV ${pressure.toFixed(0)} kPa · LEVEL ${reactorLevel.toFixed(2)} m\n\nMCC\nHOTWELL ${hotwellLevel.toFixed(2)} m · DA ${deaeratorLevel.toFixed(2)} m\nCST ${cstLevel.toFixed(2)} m · COND ${Math.round(condenserVacuum * 1000)} mbar\n\nTURBINE\n${actualRPM.toFixed(0)} RPM · ${turbineOutputMW.toFixed(1)} MW\nMAIN ${valveValue.toFixed(1)}% · BYPASS ${bypassValve.toFixed(1)}%\n\nELECTRICAL\nBUS A ${startupBusAvailable ? "ON" : "OFF"} · BUS B ${busBAvailable ? "ON" : "OFF"}\nBUS S ${safetyBusAvailable ? "ON" : "OFF"} · DC ${dcBusAvailable ? "ON" : "OFF"}`}
       />
@@ -4665,7 +4763,7 @@ export default function ReactorSimulator() {
   if (active === "power-grid")
     return tabbedShell(
       <div className="space-y-6">
-        <PowerGridPanel
+        <PowerGridPanel syncRPM={syncRPM}
           actualRPM={actualRPM}
           targetRPM={targetRPM}
           isSynchronized={isSynchronized}
@@ -4975,8 +5073,8 @@ export default function ReactorSimulator() {
   if (active === "rps") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex justify-between"><h1 className="text-3xl font-black">Reactor Protection System</h1><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><RpsPanel trips={rpsTrips} rolldownProtection={rolldownProtection}/></main></div>;
   if (active === "water") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex justify-between"><h1 className="text-3xl font-black">Water Management</h1><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><WaterManagementPanel cstLevel={cstLevel} hotwellLevel={hotwellLevel} cstMakeup={cstMakeup} cstDrain={cstDrain} hotwellMakeup={hotwellMakeup} hotwellDrain={hotwellDrain} busS={safetyBusS} onCstMakeup={setCstMakeup} onCstDrain={setCstDrain} onHotwellMakeup={setHotwellMakeup} onHotwellDrain={setHotwellDrain}/></main></div>;
   if (active === "safety") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex justify-between"><h1 className="text-3xl font-black">RCIC / LPCI Safety Systems</h1><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><SafetySystemsPanel pressure={pressure} reactorLevel={reactorLevel} busS={safetyBusS} rcicValve={rcicValve} rcicPump={rcicPump} lpciPump={lpciPump} onRcicValve={setRcicValve} onRcicPump={setRcicPump} onLpciPump={setLpciPump}/></main></div>;
-  if (active === "power-grid") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex items-center justify-between"><h1 className="text-3xl font-black">Turbine and Grid Control</h1><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><PowerGridPanel actualRPM={actualRPM} targetRPM={targetRPM} isSynchronized={isSynchronized} gridBreakerClosed={isLocked} exciterOn={exciterOn} mainSteamInletOpen={mainSteamInletOpen} mainValve={valveValue} bypassValve={bypassValve} mainValveDirection={valveDirection} bypassValveDirection={bypassDirection} reliefOpen={reliefOpen} reliefValveB={reliefValveB} turbineOutputMW={turbineOutputMW} pressure={pressure} pressureRate={pressureRate} onMainSteamInletChange={setMainSteamInletOpen} onMainValveDirection={setValveDirection} onBypassValveDirection={setBypassDirection} onReliefChange={setReliefOpen} onReliefValveBChange={setReliefValveB} onExciterChange={value => { setExciterOn(value); if (!value) setIsLocked(false); }} onGridBreaker={() => { if (isLocked) setIsLocked(false); else if (exciterOn && isSynchronized) setIsLocked(true); }}/></main></div>;
+  if (active === "power-grid") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex items-center justify-between"><h1 className="text-3xl font-black">Turbine and Grid Control</h1><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><PowerGridPanel syncRPM={syncRPM} actualRPM={actualRPM} targetRPM={targetRPM} isSynchronized={isSynchronized} gridBreakerClosed={isLocked} exciterOn={exciterOn} mainSteamInletOpen={mainSteamInletOpen} mainValve={valveValue} bypassValve={bypassValve} mainValveDirection={valveDirection} bypassValveDirection={bypassDirection} reliefOpen={reliefOpen} reliefValveB={reliefValveB} turbineOutputMW={turbineOutputMW} pressure={pressure} pressureRate={pressureRate} onMainSteamInletChange={setMainSteamInletOpen} onMainValveDirection={setValveDirection} onBypassValveDirection={setBypassDirection} onReliefChange={setReliefOpen} onReliefValveBChange={setReliefValveB} onExciterChange={value => { setExciterOn(value); if (!value) setIsLocked(false); }} onGridBreaker={() => { if (isLocked) setIsLocked(false); else if (exciterOn && isSynchronized) setIsLocked(true); }}/></main></div>;
   if (active === "electrical") return <div className="min-h-screen bg-[#07111d] p-4 text-slate-100"><main className="mx-auto max-w-7xl py-4"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs font-bold tracking-[.3em] text-cyan-400">RBWR // UNIT 02</p><h1 className="text-3xl font-black">Electrical Distribution</h1></div><Button variant="outline" onClick={() => setActive("status")}>RETURN TO OVERVIEW</Button></div><ElectricalPanel startupBusA={startupBusA} turbineBusB={turbineBusB} safetyBusS={safetyBusS} rolldownProtection={rolldownProtection} turbineOnline={isLocked} startupLoad={startupLoad} busBLoad={busBLoad} safetyLoad={safetyLoad} onStartupBusAChange={setStartupBusA} onTurbineBusBChange={setTurbineBusB} onSafetyBusSChange={setSafetyBusS} onRolldownProtectionChange={value => { setRolldownProtection(value); setEvent(value ? "ROLLDOWN PROTECTION ENABLED." : "ROLLDOWN PROTECTION BYPASSED — RPS turbine trip disabled."); }}/></main></div>;
-  return <div className="min-h-screen bg-[#07111d] text-slate-100"><main className="mx-auto max-w-7xl p-4 md:p-7"><header className="mb-5 flex flex-col justify-between gap-4 border-b border-cyan-500/20 pb-5 md:flex-row md:items-end"><div><p className="text-xs font-bold tracking-[.3em] text-cyan-400">RBWR // UNIT 02 SIMULATOR</p><h1 className="text-3xl font-black">Boiling Water Reactor Control Room</h1></div><div className="flex gap-2"><Badge className={Object.values(rpsTrips).some(Boolean) ? "bg-red-700" : "bg-emerald-700"}>{Object.values(rpsTrips).some(Boolean) ? "ALARM" : "NOMINAL"}</Badge><Button variant="outline" onClick={reset}><RotateCcw className="mr-2 h-4 w-4"/>Reset</Button></div></header><section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-slate-900/70 p-3 text-sm"><span className={alarms === "All plant systems nominal." ? "text-slate-300" : "text-red-300"}><BellRing className="mr-2 inline h-4 w-4"/>{alarms === "All plant systems nominal." ? event : alarms}</span><Button size="sm" className="bg-red-700 hover:bg-red-600" onClick={() => scram(true)}><ShieldAlert className="mr-2 h-4 w-4"/>SCRAM</Button></section><nav className="mb-5 flex gap-2 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/80 p-2">{panels.map(panel => <Button key={panel} size="sm" variant={active === panel ? "default" : "ghost"} onClick={() => setActive(panel)} className={active === panel ? "bg-cyan-500 text-slate-950" : "text-slate-300"}>{names[panel]}</Button>)}</nav><div className="rounded-2xl border border-slate-700 bg-slate-900/75 p-4 md:p-6">{active === "status" && <ReactorStatusPanel temperature={temperature} pressure={pressure} fuelLevel={fuelLevel} turbineOutputMW={turbineOutputMW} valveValue={valveValue} isRunning={isRunning} getStatusColor={() => Object.values(rpsTrips).some(Boolean) ? "destructive" : "default"} getStatusText={() => Object.values(rpsTrips).some(Boolean) ? "ALARM" : isRunning ? "OPERATIONAL" : "STANDBY"}/>} {active === "control-rods" && <ControlRodsPanel rods={rods} selectedRodId={selectedRodId} mode={mode} iprCycle={iprCycle} aprm={aprm} srmCount={srmCount} direction={rodDirection} autoEnabled={autoEnabled} autoTarget={autoTarget} autoSpeed={autoSpeed} autoMessage={autoMessage} nextRodId={nextRod?.id} selectionScope={selectionScope} reactorPeriod={reactorPeriod} onSelectRod={setSelectedRodId} onModeChange={next => { if (next === "IPR" && !isCycleComplete(rods, "SRM", 1)) { setAutoMessage("SRM BLOCK — complete the 5% SRM cycle before selecting IPR."); return; } setMode(next); if (next === "SD") setAutoEnabled(false); }} onDirectionChange={setRodDirection} onAdvanceCycle={() => { if (isCycleComplete(rods, mode, iprCycle)) { setIprCycle(value => Math.min(3, value + 1)); setEvent("IPR cycle advanced."); } else setAutoMessage("GROUP BLOCK — complete the current withdrawal cycle first."); }} onAutoEnabledChange={setAutoEnabled} onAutoTargetChange={value => setAutoTarget(clamp(value, 0, 100))} onAutoSpeedChange={setAutoSpeed} onSelectionScopeChange={setSelectionScope}/>} {active === "startup-shutdown" && <StartupShutdownPanel isRunning={isRunning} temperature={temperature} scramPressed={scramPressed} onStartReactor={start} onStopReactor={() => setIsRunning(false)} onEmergencyShutdown={() => scram(true)}/>} {active === "power-coolant" && <PowerCoolantPanel pump1Online={pump1Online} pump2Online={pump2Online} coolantPumpOn={coolantPumpOn} coolantFlow={coolantFlow} pressure={pressure} onPump1Change={setPump1Online} onPump2Change={setPump2Online} onCoolantPumpChange={setCoolantPumpOn} onCoolantFlowChange={setCoolantFlow}/>} {active === "power-grid" && <PowerGridPanel actualRPM={actualRPM} targetRPM={targetRPM} isSynchronized={isSynchronized} isLocked={isLocked} valveValue={valveValue} valveDirection={valveDirection} turbineOutputMW={turbineOutputMW} turbineSpeed={turbineSpeed} onValvePress={setValveDirection} onPausePress={() => setValveDirection(0)} onSyncPress={() => setIsLocked(value => !value)}/>} {["mcc", "feedwater", "condenser", "rps"].includes(active) && <PlantSystemsPanel panel={active as ProcessPanel} condenserVacuum={condenserVacuum} condenserPumpOn={condenserPumpOn} sjaeOn={sjaeOn} deaeratorLevel={deaeratorLevel} feedwaterDemand={feedwaterFlow} mccLevel={mccLevel} mccPumpOn={mccPumpOn} rpsTrips={rpsTrips} reactorLevel={reactorLevel} hotwellLevel={hotwellLevel} condensateFlow={condensateFlow} steamFlow={steamFlow} onCondenserPumpChange={setCondenserPumpOn} onSjaeChange={setSjaeOn} onFeedwaterDemandChange={setFeedwaterFlow} onCondensateFlowChange={setCondensateFlow} onMccPumpChange={setMccPumpOn} onManualTrip={() => scram(true)} onResetTrips={resetTrips}/>}</div><div className="mt-5 text-xs text-slate-500"><Activity className="mr-1 inline h-3 w-3 text-emerald-400"/>4 Hz physics clock · U2 temporary rod program</div></main></div>;
+  return <div className="min-h-screen bg-[#07111d] text-slate-100"><main className="mx-auto max-w-7xl p-4 md:p-7"><header className="mb-5 flex flex-col justify-between gap-4 border-b border-cyan-500/20 pb-5 md:flex-row md:items-end"><div><p className="text-xs font-bold tracking-[.3em] text-cyan-400">RBWR // UNIT 02 SIMULATOR</p><h1 className="text-3xl font-black">Boiling Water Reactor Control Room</h1></div><div className="flex gap-2"><Badge className={Object.values(rpsTrips).some(Boolean) ? "bg-red-700" : "bg-emerald-700"}>{Object.values(rpsTrips).some(Boolean) ? "ALARM" : "NOMINAL"}</Badge><Button variant="outline" onClick={reset}><RotateCcw className="mr-2 h-4 w-4"/>Reset</Button></div></header><section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-slate-900/70 p-3 text-sm"><span className={alarms === "All plant systems nominal." ? "text-slate-300" : "text-red-300"}><BellRing className="mr-2 inline h-4 w-4"/>{alarms === "All plant systems nominal." ? event : alarms}</span><Button size="sm" className="bg-red-700 hover:bg-red-600" onClick={() => scram(true)}><ShieldAlert className="mr-2 h-4 w-4"/>SCRAM</Button></section><nav className="mb-5 flex gap-2 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/80 p-2">{panels.map(panel => <Button key={panel} size="sm" variant={active === panel ? "default" : "ghost"} onClick={() => setActive(panel)} className={active === panel ? "bg-cyan-500 text-slate-950" : "text-slate-300"}>{names[panel]}</Button>)}</nav><div className="rounded-2xl border border-slate-700 bg-slate-900/75 p-4 md:p-6">{active === "status" && <ReactorStatusPanel temperature={temperature} pressure={pressure} fuelLevel={fuelLevel} turbineOutputMW={turbineOutputMW} valveValue={valveValue} isRunning={isRunning} getStatusColor={() => Object.values(rpsTrips).some(Boolean) ? "destructive" : "default"} getStatusText={() => Object.values(rpsTrips).some(Boolean) ? "ALARM" : isRunning ? "OPERATIONAL" : "STANDBY"}/>} {active === "control-rods" && <ControlRodsPanel rods={rods} selectedRodId={selectedRodId} mode={mode} iprCycle={iprCycle} aprm={aprm} srmCount={srmCount} direction={rodDirection} autoEnabled={autoEnabled} autoTarget={autoTarget} autoSpeed={autoSpeed} autoMessage={autoMessage} nextRodId={nextRod?.id} selectionScope={selectionScope} reactorPeriod={reactorPeriod} onSelectRod={setSelectedRodId} onModeChange={next => { if (next === "IPR" && !isCycleComplete(rods, "SRM", 1)) { setAutoMessage("SRM BLOCK — complete the 5% SRM cycle before selecting IPR."); return; } setMode(next); if (next === "SD") setAutoEnabled(false); }} onDirectionChange={setRodDirection} onAdvanceCycle={() => { if (isCycleComplete(rods, mode, iprCycle)) { setIprCycle(value => Math.min(3, value + 1)); setEvent("IPR cycle advanced."); } else setAutoMessage("GROUP BLOCK — complete the current withdrawal cycle first."); }} onAutoEnabledChange={setAutoEnabled} onAutoTargetChange={value => setAutoTarget(clamp(value, 0, 100))} onAutoSpeedChange={setAutoSpeed} onSelectionScopeChange={setSelectionScope}/>} {active === "startup-shutdown" && <StartupShutdownPanel isRunning={isRunning} temperature={temperature} scramPressed={scramPressed} onStartReactor={start} onStopReactor={() => setIsRunning(false)} onEmergencyShutdown={() => scram(true)}/>} {active === "power-coolant" && <PowerCoolantPanel pump1Online={pump1Online} pump2Online={pump2Online} coolantPumpOn={coolantPumpOn} coolantFlow={coolantFlow} pressure={pressure} onPump1Change={setPump1Online} onPump2Change={setPump2Online} onCoolantPumpChange={setCoolantPumpOn} onCoolantFlowChange={setCoolantFlow}/>} {active === "power-grid" && <PowerGridPanel syncRPM={syncRPM} actualRPM={actualRPM} targetRPM={targetRPM} isSynchronized={isSynchronized} isLocked={isLocked} valveValue={valveValue} valveDirection={valveDirection} turbineOutputMW={turbineOutputMW} turbineSpeed={turbineSpeed} onValvePress={setValveDirection} onPausePress={() => setValveDirection(0)} onSyncPress={() => setIsLocked(value => !value)}/>} {["mcc", "feedwater", "condenser", "rps"].includes(active) && <PlantSystemsPanel panel={active as ProcessPanel} condenserVacuum={condenserVacuum} condenserPumpOn={condenserPumpOn} sjaeOn={sjaeOn} deaeratorLevel={deaeratorLevel} feedwaterDemand={feedwaterFlow} mccLevel={mccLevel} mccPumpOn={mccPumpOn} rpsTrips={rpsTrips} reactorLevel={reactorLevel} hotwellLevel={hotwellLevel} condensateFlow={condensateFlow} steamFlow={steamFlow} onCondenserPumpChange={setCondenserPumpOn} onSjaeChange={setSjaeOn} onFeedwaterDemandChange={setFeedwaterFlow} onCondensateFlowChange={setCondensateFlow} onMccPumpChange={setMccPumpOn} onManualTrip={() => scram(true)} onResetTrips={resetTrips}/>}</div><div className="mt-5 text-xs text-slate-500"><Activity className="mr-1 inline h-3 w-3 text-emerald-400"/>4 Hz physics clock · U2 temporary rod program</div></main></div>;
   */
 }

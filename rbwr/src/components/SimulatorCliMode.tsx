@@ -32,9 +32,10 @@ interface SimulatorCliModeProps {
   liveStatus: string;
   plantAssignment?: PlantAssignment | null;
   onIncomingCall?: () => void;
+  onOpenDatabase?: () => boolean;
 }
 
-export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAssignment, onIncomingCall }: SimulatorCliModeProps) {
+export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAssignment, onIncomingCall, onOpenDatabase }: SimulatorCliModeProps) {
   const [command, setCommand] = useState("");
   const [terminalMode, setTerminalMode] = useState<"entry" | "editor">("entry");
   const [department, setDepartment] = useState<string | null>(null);
@@ -193,6 +194,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
   const executeEntry = (text: string) => {
     const normalized = text.toLowerCase().trim().replace(/\s+/g, " ");
     if (normalized === "editor") {
+      if (onOpenDatabase) return onOpenDatabase() ? "Opened Plant Database." : "Plant Database access is unavailable.";
       setTerminalMode("editor"); setDepartment(null);
       return "SIMULATION EDITOR ENABLED. Type HELP for live control commands; EXIT returns to entry mode.";
     }

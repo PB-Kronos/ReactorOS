@@ -37,25 +37,42 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def kiosk_request(self, origin, require_origin=True):
+        token = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
+        supplied = self.headers.get("X-ReactorOS-Session", "")
+        allowed = (origin,) if require_origin else (None, origin)
+        return (debian_session() and self.headers.get("Host") == origin.removeprefix("http://")
+                and self.headers.get("Origin") in allowed
+                and bool(token) and hmac.compare_digest(token.encode(), supplied.encode()))
+
     def do_POST(self):
         origin = f"http://127.0.0.1:{self.server.server_port}"
         if self.headers.get("Host") != origin.removeprefix("http://") or self.headers.get("Origin") not in (None, origin):
             return self.send_json({"error": "Local clients only"}, 403)
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 4096 or self.headers.get_content_type() != "application/json":
+            limit = 262144 if self.path == "/api/plant/sync" else 4096
+            if not 0 < size <= limit or self.headers.get_content_type() != "application/json":
                 raise ValueError
             data = json.loads(self.rfile.read(size))
             if not isinstance(data, dict):
                 raise ValueError
         except ValueError:
             return self.send_json({"error": "Invalid JSON request"}, 400)
+        if self.path == "/api/database/variables":
+            if not self.kiosk_request(origin) or not permitted("app:live-variables") or not permitted("database:edit"):
+                return self.send_json({"error": "Permission denied"}, 403)
+            with self.server.plant_lock:
+                if data.get("operation") == "scenario" and time.monotonic() - self.server.plant_seen > 5:
+                    return self.send_json({"error": "Open the RBWR control room before loading a scenario"}, 503)
+                try:
+                    return self.send_json(self.server.database_request({**data, "action": "variable-edit"}), 202)
+                except ValueError as exc:
+                    return self.send_json({"error": str(exc)}, 400)
+                except (RuntimeError, OSError):
+                    return self.send_json({"error": "Database service unavailable"}, 503)
         if self.path == "/api/desktop/terminal":
-            token = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
-            supplied = self.headers.get("X-ReactorOS-Session", "").encode("utf-8")
-            if (not debian_session() or self.headers.get("Origin") != origin
-                    or not token or not hmac.compare_digest(token.encode(), supplied)
-                    or not permitted("terminal:execute")):
+            if not self.kiosk_request(origin) or not permitted("terminal:execute"):
                 return self.send_json({"error": "Debian terminal access denied"}, 403)
             command = data.get("command")
             if not isinstance(command, str) or not command.strip() or "\0" in command:
@@ -113,13 +130,20 @@ class Handler(SimpleHTTPRequestHandler):
                         record("RBWR reported a SCRAM")
                     if bool(data.get("isRunning")) != bool(previous.get("isRunning")):
                         record("RBWR running" if data.get("isRunning") else "RBWR stopped")
-                self.server.plant_state = data
+                self.server.plant_state = {key: value for key, value in data.items() if key != "catalog"}
                 self.server.plant_seen = time.monotonic()
                 pending = self.server.plant_trip
                 self.server.plant_trip = False
                 overrides = self.server.plant_overrides
                 self.server.plant_overrides = []
-                return self.send_json({"scram": pending, "overrides": overrides})
+                response = {"scram": pending, "overrides": overrides}
+                catalog = data.get("catalog")
+                if self.kiosk_request(origin) and isinstance(catalog, dict):
+                    try:
+                        response["database"] = self.server.database_request({**catalog, "action": "variable-sync"})
+                    except (ValueError, RuntimeError, OSError):
+                        pass
+                return self.send_json(response)
             if self.path == "/api/plant/command" and data == {"command": "scram"}:
                 if not permitted("app:mainframe"):
                     return self.send_json({"error": "Permission denied"}, 403)
@@ -130,6 +154,18 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_json({"error": "Unknown plant request"}, 404)
 
     def do_GET(self):
+        if self.path == "/api/database/variables":
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            if not self.kiosk_request(origin, require_origin=False) or not permitted("app:live-variables"):
+                return self.send_json({"error": "Permission denied"}, 403)
+            with self.server.plant_lock:
+                try:
+                    result = self.server.database_request({"action": "variables"})
+                    result["canEdit"] = permitted("database:edit")
+                    result["online"] = time.monotonic() - self.server.plant_seen <= 5
+                    return self.send_json(result)
+                except (RuntimeError, OSError, ValueError):
+                    return self.send_json({"error": "Database service unavailable"}, 503)
         if self.path == "/api/operator" and debian_session():
             return self.send_json(current_access())
         if self.path == "/api/events":
@@ -179,6 +215,7 @@ class LocalServer:
         # A stable origin is required for the simulator's browser localStorage.
         self.server = ThreadingHTTPServer(("127.0.0.1", 18765), Handler)
         init_plant_bridge(self.server)
+        self.server.database_request = self.database_request
         try:
             self.database = subprocess.Popen(
                 [sys.executable, "-u", str(ROOT / "database_service.py")],
@@ -210,7 +247,7 @@ class LocalServer:
                 raise RuntimeError("Database service stopped unexpectedly")
             result = json.loads(line)
             if not result.get("ok"):
-                raise RuntimeError(result.get("error", "Database error"))
+                raise ValueError(result.get("error", "Database error"))
             return result
 
     def close(self):

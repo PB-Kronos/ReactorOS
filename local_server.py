@@ -154,6 +154,16 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_json({"error": "Unknown plant request"}, 404)
 
     def do_GET(self):
+        if self.path == "/api/desktop/fullscreen-key":
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            key_file = os.environ.get("REACTOROS_FULLSCREEN_KEY")
+            if not key_file or not self.kiosk_request(origin, require_origin=False):
+                return self.send_json({"error": "Kiosk fullscreen key unavailable"}, 403)
+            try:
+                sequence = str(Path(key_file).stat().st_mtime_ns)
+            except FileNotFoundError:
+                sequence = "0"
+            return self.send_json({"sequence": sequence})
         if self.path == "/api/database/variables":
             origin = f"http://127.0.0.1:{self.server.server_port}"
             if not self.kiosk_request(origin, require_origin=False) or not permitted("app:live-variables"):

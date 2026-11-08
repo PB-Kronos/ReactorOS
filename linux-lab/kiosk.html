@@ -5,35 +5,54 @@
 <title>ReactorOS Desktop</title>
 <style>
   * { box-sizing: border-box }
-  body { margin: 0; background: teal; font: 14px Tahoma, sans-serif }
-  button { background: silver; border: 2px outset white; padding: 5px 9px; font: inherit }
+  :root { --ui: 1; --icons: 1; --text: 1; --control: calc(23px * var(--ui) * var(--icons));
+    --title: calc(var(--control) + 8px); --taskbar: max(calc(var(--control) + 9px), calc(34px * var(--ui) * var(--text))) }
+  body { margin: 0; background: teal; font: calc(14px * var(--ui) * var(--text)) Tahoma, sans-serif }
+  button { background: silver; border: 2px outset white; padding: calc(5px * var(--ui)) calc(9px * var(--ui)); font: inherit }
   button:active { border-style: inset }
-  #desktop { position: fixed; inset: 0 0 34px; padding: 18px; isolation: isolate }
+  #desktop { position: fixed; inset: 0 0 var(--taskbar); padding: calc(18px * var(--ui)); isolation: isolate }
   #desktop > button { display: block; margin: 0 0 10px }
-  footer { position: fixed; inset: auto 0 0; height: 34px; background: silver;
+  footer { position: fixed; inset: auto 0 0; height: var(--taskbar); background: silver;
     border-top: 2px solid white; display: flex; align-items: center; gap: 5px; padding: 2px }
   #identity { margin-left: auto; padding: 3px 8px; border: 2px inset white }
-  #menu { position: fixed; z-index: 20; bottom: 34px; left: 2px; background: silver;
-    border: 2px outset white; padding: 6px; width: 245px }
+  #tasks { display: flex; min-width: 0; overflow-x: auto; white-space: nowrap }
+  #menu { position: fixed; z-index: 20; bottom: var(--taskbar); left: 2px; background: silver;
+    border: 2px outset white; padding: 6px; width: min(100vw, calc(245px * var(--ui) * var(--text))); max-height: calc(100vh - var(--taskbar)); overflow: auto }
   #menu button { width: 100%; text-align: left; margin: 1px 0 }
   .window { position: absolute; left: 16px; top: 16px; width: calc(100% - 70px);
     height: calc(100% - 52px); background: silver; border: 3px outset white;
     resize: both; overflow: hidden; min-width: 300px; min-height: 170px }
-  .title { height: 30px; background: navy; color: white; font-weight: bold;
+  .window.maximized, .window.fullscreen { inset: 0 !important; width: 100% !important; height: 100% !important; min-width: 0; min-height: 0; resize: none }
+  .title { height: var(--title); background: navy; color: white; font-weight: bold;
     display: flex; align-items: center; gap: 4px; padding: 2px 5px }
   .title span { flex: 1; cursor: move; user-select: none; touch-action: none }
-  .start-icon { display: inline-grid; grid-template-columns: repeat(2, 5px); gap: 1px; margin-right: 4px }
-  .start-icon i { height: 5px; background: #df3327 }
+  .start-icon { display: inline-grid; grid-template-columns: repeat(2, calc(5px * var(--ui) * var(--icons))); gap: 1px; margin-right: 4px }
+  .start-icon i { height: calc(5px * var(--ui) * var(--icons)); background: #df3327 }
   .start-icon i:nth-child(2) { background: #249340 }
   .start-icon i:nth-child(3) { background: #2860bd }
   .start-icon i:nth-child(4) { background: #e9b323 }
-  .title button { padding: 0 5px }
-  iframe { width: 100%; height: calc(100% - 30px); border: 2px inset white; background: white }
+  .title button { display: grid; place-items: center; padding: 0; width: var(--control); height: var(--control); flex: none; color: black }
+  .title button svg { width: 60%; height: 60%; pointer-events: none }
+  iframe { display: block; width: 100%; height: calc(100% - var(--title)); border: 2px inset white; background: white }
+  body.app-fullscreen #desktop { bottom: 0 }
+  body.app-fullscreen footer, .window.fullscreen .title { display: none }
+  .window.fullscreen, .window.fullscreen iframe { border: 0 }
+  .window.fullscreen iframe { height: 100% }
+  dialog { max-width: min(90vw, 34em); background: silver; border: 3px outset white; font: inherit }
+  dialog label { display: grid; grid-template-columns: 8em 1fr 3em; gap: .5em; align-items: center; margin: .75em 0 }
   [hidden] { display: none !important }
 </style>
 <main id="desktop" aria-label="ReactorOS desktop"></main>
 <nav id="menu" aria-label="Start menu" hidden></nav>
 <footer><button id="start" aria-expanded="false"><span class="start-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Start</b></button><span id="tasks"></span><span id="identity">Reading Debian session…</span></footer>
+<dialog id="display" aria-labelledby="display-heading">
+  <h2 id="display-heading">Display Settings</h2>
+  <label>UI scale <input type="range" name="ui" min="75" max="175" step="5"><output></output></label>
+  <label>Text size <input type="range" name="text" min="85" max="175" step="5"><output></output></label>
+  <label>Desktop icons <input type="range" name="icons" min="75" max="175" step="5"><output></output></label>
+  <p>Settings are saved for this Debian account. Press F11 to enter or leave app fullscreen.</p>
+  <button id="display-reset">Reset</button> <form method="dialog" style="display:inline"><button>Done</button></form>
+</dialog>
 <script type="module">
   if (location.hash) {
     sessionStorage.setItem("reactoros-terminal-token", location.hash.slice(1));
@@ -50,11 +69,99 @@
   const start = document.querySelector("#start");
   const tasks = document.querySelector("#tasks");
   const identity = document.querySelector("#identity");
+  const display = document.querySelector("#display");
   const windows = new Map();
+  const displayInputs = [...display.querySelectorAll("input")];
+  let settings = { ui: 100, text: 100, icons: 100 };
+  let settingsKey;
+  let activeWindow;
+  let fullscreenWindow;
   let topLayer = 0;
+  const iconPaths = {
+    minimize: "M2 12h8",
+    maximize: "M2 3h12v10H2z M2 5h12",
+    restore: "M5 3h9v8 M2 6h9v8H2z",
+    close: "M3 3l10 10 M13 3L3 13",
+  };
+  function setIcon(control, icon, label) {
+    control.setAttribute("aria-label", label);
+    control.title = label;
+    control.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="' + iconPaths[icon] + '"/></svg>';
+  }
+  function scaleFrame(frame) {
+    const doc = frame.contentDocument;
+    if (!doc?.documentElement) return;
+    doc.documentElement.style.zoom = settings.ui / 100;
+    doc.documentElement.style.fontSize = 16 * settings.text / 100 + "px";
+    if (frame.src.includes("/plant-tools.html")) doc.body.style.fontSize = 14 * settings.text / 100 + "px";
+  }
+  function applySettings() {
+    for (const input of displayInputs) {
+      const value = settings[input.name];
+      document.documentElement.style.setProperty("--" + input.name, value / 100);
+      input.value = value;
+      input.nextElementSibling.textContent = value + "%";
+    }
+    for (const win of windows.values()) {
+      try { scaleFrame(win.frame); } catch {}
+    }
+  }
+  for (const input of displayInputs) input.oninput = () => {
+    settings[input.name] = Number(input.value);
+    applySettings();
+    localStorage.setItem(settingsKey, JSON.stringify(settings));
+  };
+  document.querySelector("#display-reset").onclick = () => {
+    settings = { ui: 100, text: 100, icons: 100 };
+    localStorage.removeItem(settingsKey);
+    applySettings();
+  };
+  function setFullscreen(win) {
+    fullscreenWindow?.pane.classList.remove("fullscreen");
+    fullscreenWindow = win;
+    document.body.classList.toggle("app-fullscreen", Boolean(win));
+    if (win) {
+      showMenu(false);
+      win.show();
+      win.pane.classList.add("fullscreen");
+    }
+  }
+  function toggleFullscreen() {
+    if (display.open) return;
+    if (fullscreenWindow) return setFullscreen(null);
+    const visible = [...windows.values()].filter(win => !win.pane.hidden);
+    const front = visible.reduce((top, win) =>
+      !top || Number(win.pane.style.zIndex) > Number(top.pane.style.zIndex) ? win : top, null);
+    if (front) setFullscreen(front);
+  }
+  function handleShortcut(event) {
+    if (event.key === "F11" && !event.repeat) {
+      event.preventDefault();
+      toggleFullscreen();
+    } else if (event.key === "Escape" && fullscreenWindow) {
+      event.preventDefault();
+      setFullscreen(null);
+    }
+  }
+  window.addEventListener("keydown", handleShortcut, true);
+  async function listenForKioskFullscreenKey() {
+    let previous;
+    while (true) {
+      try {
+        const reply = await fetch("/api/desktop/fullscreen-key", {
+          cache: "no-store", headers: { "X-ReactorOS-Session": sessionStorage.getItem("reactoros-terminal-token") || "" },
+        });
+        if (!reply.ok) return;
+        const { sequence } = await reply.json();
+        if (previous !== undefined && sequence !== previous) toggleFullscreen();
+        previous = sequence;
+      } catch {}
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+  }
   function makeDraggable(handle, pane) {
     handle.addEventListener("pointerdown", event => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || pane.classList.contains("maximized")) return;
       handle.setPointerCapture(event.pointerId);
       const startX = event.clientX - pane.offsetLeft;
       const startY = event.clientY - pane.offsetTop;
@@ -94,13 +201,22 @@
     frame.title = label;
     frame.src = url.href;
     frame.allow = "autoplay";
-    frame.addEventListener("load", () => {
-      try { frame.contentWindow.open = openProgram; } catch {}
-    });
     const show = () => {
+      if (fullscreenWindow && fullscreenWindow !== win) setFullscreen(null);
+      activeWindow = win;
       pane.hidden = false;
       pane.style.zIndex = ++topLayer;
     };
+    frame.addEventListener("load", () => {
+      try {
+        frame.contentWindow.open = openProgram;
+        frame.contentWindow.addEventListener("keydown", handleShortcut, true);
+        frame.contentWindow.addEventListener("pointerdown", () => {
+          if (activeWindow !== win) show();
+        }, true);
+        scaleFrame(frame);
+      } catch {}
+    });
     const task = button(label, show);
     const title = document.createElement("header");
     title.className = "title";
@@ -110,8 +226,18 @@
     title.addEventListener("pointerdown", show);
     pane.style.left = 16 + (windows.size % 5) * 12 + "px";
     pane.style.top = 16 + (windows.size % 5) * 9 + "px";
-    title.append(caption, button("Minimize", () => { pane.hidden = true; }),
-      button("Close", () => { pane.remove(); task.remove(); windows.delete(key); }));
+    const minimize = button("", () => { pane.hidden = true; });
+    const maximize = button("", () => setMaximized(!pane.classList.contains("maximized")));
+    const close = button("", () => { pane.remove(); task.remove(); windows.delete(key); });
+    function setMaximized(on) {
+      pane.classList.toggle("maximized", on);
+      setIcon(maximize, on ? "restore" : "maximize", on ? "Restore" : "Maximize");
+    }
+    setIcon(minimize, "minimize", "Minimize");
+    setIcon(close, "close", "Close");
+    setMaximized(route === "/reactor" && !url.searchParams.has("window"));
+    caption.ondblclick = () => maximize.click();
+    title.append(caption, minimize, maximize, close);
     pane.append(title, frame);
     desktop.append(pane);
     tasks.append(task);
@@ -130,6 +256,15 @@
     sessionStorage.setItem("reactoros-permissions", JSON.stringify(permissions));
     localStorage.setItem("unit2-operator-name", name);
     identity.textContent = name;
+    settingsKey = "reactoros-display:" + name;
+    try {
+      const saved = JSON.parse(localStorage.getItem(settingsKey));
+      for (const input of displayInputs) {
+        const value = saved?.[input.name];
+        if (Number.isFinite(value) && value >= Number(input.min) && value <= Number(input.max)) settings[input.name] = value;
+      }
+    } catch {}
+    applySettings();
     const permissionByRoute = new Map([
       ["/", "greeting"], ["/reactor", "reactor"], ["/status-desk", "status-desk"],
       ["/supervisor", "supervisor"], ["/mainframe", "mainframe"], ["/manual", "manual"],
@@ -162,8 +297,10 @@
     for (const route of ["/reactor", "/"]) {
       if (programs.has(route)) desktop.append(button(programs.get(route), () => openProgram(route)));
     }
+    menu.append(button("Display Settings", () => { showMenu(false); display.showModal(); }));
     start.onclick = () => showMenu(menu.hidden);
     start.disabled = false;
+    void listenForKioskFullscreenKey();
   } catch (error) {
     identity.textContent = error.message;
   }

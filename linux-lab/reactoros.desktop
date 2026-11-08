@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=ReactorOS
+Comment=ReactorOS kiosk workstation
+Exec=/bin/sh /opt/reactoros/kiosk-session.sh
+Type=Application

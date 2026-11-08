@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+
+# Run as root on Debian, with an empty native Linux build directory.
+if [ "$#" -ne 2 ] || [ "$(id -u)" -ne 0 ]; then
+    printf 'Usage: sudo sh build-kiosk-iso.sh PROJECT_ROOT EMPTY_BUILD_DIR\n' >&2
+    exit 2
+fi
+root=$(realpath "$1")
+lab="$root/linux-lab"
+test -f "$root/rbwr/dist/index.html"
+mkdir -p "$2"
+cd "$2"
+if [ -n "$(ls -A)" ]; then
+    printf 'Use an empty build directory.\n' >&2
+    exit 2
+fi
+
+lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
+    --debian-installer none --apt-recommends false --cache false \
+    --archive-areas main --bootappend-live 'boot=live components username=operator noautologin persistence persistence-label=REACTOROS_PERSIST persistence-media=removable-usb'
+
+mkdir -p config/package-lists
+printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv \
+    lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
+    dbus-x11 openbox firefox-esr fonts-dejavu-core python3 iproute2 procps \
+    thunar mousepad ristretto xterm pipewire-audio wireplumber curl ca-certificates openssl \
+    > config/package-lists/reactoros.list.chroot
+
+overlay=config/includes.chroot
+app="$overlay/opt/reactoros"
+mkdir -p "$app/rbwr" "$overlay/usr/share/xsessions" "$overlay/etc/lightdm/lightdm.conf.d" "$overlay/usr/local/sbin"
+install -m 0755 "$lab/reactoros-update.sh" "$overlay/usr/local/sbin/reactoros-update"
+cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" "$root/workstation_access.py" "$app/"
+cp -r "$root/rbwr/dist" "$app/rbwr/"
+cp "$lab/manage-users.py" "$app/"
+cp "$lab/kiosk.html" "$lab/plant-tools.html" "$app/rbwr/dist/"
+cp "$lab/kiosk-session.sh" "$app/"
+cp "$lab/reactoros.desktop" "$overlay/usr/share/xsessions/"
+cp "$lab/lightdm-reactoros.conf" "$overlay/etc/lightdm/lightdm.conf.d/90-reactoros.conf"
+
+lb build
+mv live-image-amd64.hybrid.iso ReactorOS-amd64.iso
+sha256sum ReactorOS-amd64.iso > ReactorOS-amd64.iso.sha256

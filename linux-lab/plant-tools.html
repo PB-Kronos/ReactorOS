@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReactorOS Plant Tools</title>
+<style>
+  body { font: 14px Tahoma, sans-serif; background: silver; margin: 12px }
+  pre { padding: 10px; background: white; border: 2px inset white; white-space: pre-wrap }
+  button { border: 2px outset white; background: silver }
+  fieldset { margin: 10px 0 }
+</style>
+<h1 id="title"></h1>
+<p id="status" role="status"></p>
+<form id="editor" hidden>
+  <fieldset><legend>Simulation override</legend>
+  <label>Variable <select id="variable">
+    <option value="reactor.temp">Temperature (°C)</option>
+    <option value="reactor.pressure">Pressure (kPa)</option>
+    <option value="reactor.aprm">Reactor power (APRM %)</option>
+  </select></label>
+  <label>Value <input id="value" type="number" step="any" required></label>
+  <button id="apply" disabled>Apply</button></fieldset>
+</form>
+<pre id="output"></pre>
+<script type="module">
+  const serverView = new URLSearchParams(location.search).get("tool") === "server";
+  const editor = document.querySelector("#editor");
+  const apply = document.querySelector("#apply");
+  const status = document.querySelector("#status");
+  const output = document.querySelector("#output");
+  document.querySelector("#title").textContent = serverView ? "Server Event Log" : "Live Variables";
+  const canEdit = JSON.parse(sessionStorage.getItem("reactoros-permissions") || "[]").includes("database:edit");
+  editor.hidden = serverView || !canEdit;
+  editor.addEventListener("submit", async event => {
+    event.preventDefault();
+    const command = document.querySelector("#variable").value;
+    const value = document.querySelector("#value").valueAsNumber;
+    if (!Number.isFinite(value) || apply.disabled) return;
+    try {
+      const reply = await fetch("/api/plant/override", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variable: command, value }),
+      });
+      const result = await reply.json();
+      status.textContent = reply.ok ? "Override queued for the active control room." : result.error;
+    } catch {
+      status.textContent = "The server could not be reached.";
+    }
+  });
+  async function refresh() {
+    try {
+      const reply = await fetch(serverView ? "/api/events" : "/api/plant", { cache: "no-store" });
+      if (!reply.ok) throw new Error("Service unavailable");
+      const data = await reply.json();
+      if (serverView) {
+        output.textContent = data.events.map(event => `${event.created_at} UTC  ${event.message}`).join("\n") || "No events recorded.";
+      } else {
+        apply.disabled = !canEdit || !data.online;
+        output.textContent = data.online ? JSON.stringify(data.state, null, 2) : "Control room offline.";
+      }
+    } catch (error) {
+      apply.disabled = true;
+      output.textContent = error.message;
+    } finally {
+      setTimeout(refresh, 1000);
+    }
+  }
+  void refresh();
+</script>

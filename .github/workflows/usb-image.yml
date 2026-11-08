@@ -1,0 +1,30 @@
+name: Build ReactorOS USB image
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --legacy-peer-deps && npm run build
+        working-directory: rbwr
+      - name: Build Debian Live image
+        run: |
+          mkdir -p release-out/usb
+          docker run --rm --privileged -v "$PWD:/project" debian:trixie sh -ec '
+            apt-get update
+            apt-get install -y live-build debootstrap xorriso squashfs-tools isolinux syslinux-common grub-efi-amd64-bin mtools dosfstools
+            sh /project/linux-lab/build-kiosk-iso.sh /project /project/release-out/usb
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReactorOS-amd64
+          path: |
+            release-out/usb/ReactorOS-amd64.iso
+            release-out/usb/ReactorOS-amd64.iso.sha256
+          if-no-files-found: error

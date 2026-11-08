@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.sqlite3*
+*.log
+.env*
+*.pem
+*.key
+node_modules/
+dist/
+.npm-cache/
+.desktop-runtime/
+.rbwr-profile/
+.rbwr-test-profile/
+.runtime-temp/
+/linux-lab/*-dist/
+/linux-lab/ReactorOS * Lab/
+/linux-lab/*.viso
+/linux-lab/*.iso*
+/linux-lab/*-check.png
+/release-out/
+/rbwr/public/audio/
+/rbwr/public/hes-archive-favicon.svg
+/rbwr/rbwr-process-check.mjs

@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+version=${1:?Pass a release tag such as v1.0.0}
+printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+lab=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+root=$(dirname "$lab")
+test -f "$root/rbwr/dist/index.html"
+output=${2:-"$root/release-out"}
+mkdir -p "$output"
+output=$(realpath "$output")
+stage=$(mktemp -d)
+trap 'rm -rf -- "$stage"' EXIT
+mkdir -p "$stage/rbwr"
+cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" \
+    "$root/workstation_access.py" "$lab/manage-users.py" "$lab/kiosk-session.sh" "$stage/"
+cp -r "$root/rbwr/dist" "$stage/rbwr/"
+cp "$lab/kiosk.html" "$lab/plant-tools.html" "$stage/rbwr/dist/"
+printf '%s\n' "$version" > "$stage/VERSION"
+tar -czf "$output/reactoros-update.tar.gz" -C "$stage" .

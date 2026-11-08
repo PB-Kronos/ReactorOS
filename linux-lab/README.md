@@ -1,0 +1,76 @@
+# ReactorOS Linux lab
+
+GitHub release and bootable USB instructions are in [Releases and USB](RELEASES.md).
+
+**ReactorOS Kiosk Lab** is the separate persistent VM for testing the
+Windows 95-style workstation. Its VirtualBox configuration and virtual
+disk live under `linux-lab/ReactorOS Kiosk Lab`. It uses Debian's
+LightDM login and starts ReactorOS fullscreen after sign-in. The lab
+account is `operator` with the initial lab password `live`.
+The desktop reads the real Debian username from the local server.
+
+For an existing kiosk VM, run `Attach-Kiosk-Update.ps1` on the Windows
+host after building RBWR. In the VM, switch to a Debian console with
+`Ctrl+Alt+F2`, sign in, and run:
+
+```sh
+sudo mkdir -p /mnt/reactoros-update
+sudo mount -o ro /dev/sr1 /mnt/reactoros-update
+sudo sh /mnt/reactoros-update/update-kiosk.sh
+sudo reboot
+```
+
+The update adds the four Debian desktop applications and PipeWire audio.
+It also adds a read-only view of recent SQLite server events and three
+simulation overrides under Live Variables. The kiosk's command console
+uses the Debian identity with the simulator's existing supervisor access.
+
+**User Manager** opens from Start for an account that has both the
+`users:manage` permission and Debian sudo membership. Authenticate with
+your own Debian password. It lists accounts, creates Debian users, resets
+passwords, assigns one or more built-in or custom ReactorOS roles, and
+manages the actual Debian sudo group. Role permissions are additive.
+Unassigned accounts start as trainee, or admin if they already belong to
+Debian's sudo group. Reload the kiosk or sign in again to refresh Start.
+
+ReactorOS permissions govern the workstation menu and local endpoints.
+Debian controls OS access. The File Explorer permission governs the
+ReactorOS launcher and does not change filesystem permissions.
+
+The kiosk VM uses a dynamically allocated disk capped at 5 GiB. Keep the
+VM powered off when copying its folder. The build recipe
+`build-kiosk-iso.sh` is for a future USB release once the VM is approved.
+The existing Debian Live installer media is separate from the kiosk build.
+
+**ReactorOS Linux Lab** boots Debian Live Standard in VirtualBox. The VM has
+no hard disk. Its second virtual DVD contains the built ReactorOS workstation,
+the Python server, and the SQLite worker. Changes inside the guest are
+temporary and disappear on reboot.
+
+At the Debian shell, mount the tools disc and start the server:
+
+```sh
+sudo mkdir -p /mnt/reactoros
+sudo mount -o ro /dev/sr1 /mnt/reactoros
+sh /mnt/reactoros/start-linux.sh
+```
+
+The script copies the files into a writable temporary directory. Press
+Ctrl+C to stop the server and database worker. In another guest console,
+check the running stack and the guest itself:
+
+```sh
+python3 -c 'from urllib.request import urlopen; print(urlopen("http://127.0.0.1:18765/api/status").read().decode())'
+uname -a
+ip -brief address
+systemctl --failed
+```
+
+The standard image boots to a console. A graphical session with a browser
+is needed to run the control room. Until that is open, the plant endpoint
+reports the reactor offline. Keep real Linux administration in the guest
+shell. The simulator terminal currently accepts plant commands only.
+
+To recreate the VM, place the verified Debian 13.7.0 amd64 standard live ISO
+in this directory and run `Setup-Linux-Lab.ps1` from PowerShell. The VM's
+tools disc references the current workstation build on the host.

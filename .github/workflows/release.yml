@@ -1,0 +1,32 @@
+name: ReactorOS update release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: rbwr/package-lock.json
+      - run: npm ci --legacy-peer-deps
+        working-directory: rbwr
+      - run: npm run build
+        working-directory: rbwr
+      - run: sh linux-lab/package-update.sh "$GITHUB_REF_NAME"
+      - name: Sign and publish
+        env:
+          RELEASE_KEY: ${{ secrets.REACTOROS_RELEASE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          umask 077
+          key=$(mktemp)
+          trap 'rm -f -- "$key"' EXIT
+          printf '%s\n' "$RELEASE_KEY" > "$key"
+          openssl pkeyutl -sign -inkey "$key" -rawin -in release-out/reactoros-update.tar.gz -out release-out/reactoros-update.tar.gz.sig
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --latest release-out/reactoros-update.tar.gz release-out/reactoros-update.tar.gz.sig

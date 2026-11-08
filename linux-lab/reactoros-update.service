@@ -1,0 +1,10 @@
+[Unit]
+Description=Apply a signed ReactorOS update while the kiosk is idle
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/reactoros/update-repo
+ConditionPathExists=/etc/reactoros/update-public.pem
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/reactoros-update --scheduled

@@ -1,0 +1,63 @@
+.rbwr-control-room {
+  background: #008080 !important;
+  color: black !important;
+  font-family: Tahoma, "MS Sans Serif", sans-serif;
+}
+.rbwr-control-room main > header {
+  background: #000080;
+  color: white;
+  padding: 8px 12px;
+  border: 2px outset silver;
+}
+.rbwr-control-room main > header h1 {
+  font-size: 1.25rem;
+}
+.rbwr-control-room main > nav {
+  background: silver;
+  color: black;
+  border: 2px outset silver;
+  border-radius: 0;
+  padding: 4px;
+}
+.rbwr-control-room button:not([class*="bg-red"]):not([class*="bg-amber"]):not([class*="bg-green"]):not([class*="bg-emerald"]) {
+  border-radius: 0;
+  border: 2px outset silver;
+  background-color: silver;
+  color: black;
+  box-shadow: none;
+}
+.rbwr-control-room button:active:not(:disabled) {
+  border-style: inset;
+}
+.rbwr-control-room button:focus-visible {
+  outline: 1px dotted currentColor;
+  outline-offset: -4px;
+}
+.rbwr-control-room nav button[class*="bg-cyan"] {
+  background-color: #000080 !important;
+  color: white !important;
+}
+.rbwr-control-room button:disabled {
+  opacity: .6;
+}
+.rbwr-control-room [class*="rounded-xl"],
+.rbwr-control-room [class*="rounded-2xl"] {
+  border-radius: 0;
+}
+.reactoros-kiosk body {
+  font-family: Tahoma, "MS Sans Serif", sans-serif;
+}
+.reactoros-kiosk button:not([class*="bg-red"]):not([class*="bg-green"]):not([class*="bg-emerald"]) {
+  border-radius: 0;
+  border: 2px outset silver;
+  background: silver;
+  color: black;
+}
+.reactoros-kiosk button:active:not(:disabled) {
+  border-style: inset;
+}
+.reactoros-kiosk main > header {
+  background: navy;
+  border: 2px outset silver;
+  padding: 8px;
+}

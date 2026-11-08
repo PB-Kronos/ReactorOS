@@ -3727,9 +3727,9 @@ export default function ReactorSimulator() {
         const presetMainValve = scenario === "reactor-ready" ? 0 : gridLoad ? 60 : 60;
         const presetBypassValve = scenario === "reactor-ready" ? 100 : gridLoad ? 22 : 40;
         const presetProcessFlow = gridLoad ? 72.3 : 20.9;
-        // At the preset steam rates, this puts the condenser model close to
-        // its 52–55 mbar design band without needing an auto-controller.
-        const presetCondenserValve = gridLoad ? 7.2 : 30;
+        // Keep cooling authority in reserve while steam flow settles after
+        // loading. A nearly closed valve only holds vacuum at peak steam flow.
+        const presetCondenserValve = gridLoad ? 65 : 50;
         setRpsTrips((previous) => Object.fromEntries(Object.keys(previous).map((key) => [key, false])));
         setIsRunning(true); setScramPressed(false); setMode("RUN"); setIprCycle(8); setIrmRange(8);
         setRods((previous) => previous.map((rod) => ({ ...rod, position: presetRodPosition, temperature: 25 + presetAprm * 3.2 })));

@@ -3,6 +3,11 @@ set -eu
 
 state="${XDG_STATE_HOME:-$HOME/.local/state}/reactoros"
 mkdir -p "$state/firefox"
+# This profile only hosts the local workstation, whose alarms must be able to
+# play even when a scenario is triggered from a different app window.
+if ! grep -Fqx 'user_pref("media.autoplay.default", 0);' "$state/firefox/user.js" 2>/dev/null; then
+    printf '\nuser_pref("media.autoplay.default", 0);\n' >> "$state/firefox/user.js"
+fi
 cd /opt/reactoros
 export REACTOROS_DATA_DIR="$state"
 export REACTOROS_DEBIAN_SESSION=1

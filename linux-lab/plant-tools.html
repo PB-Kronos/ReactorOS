@@ -14,10 +14,15 @@
   #results { max-height: 65vh; overflow: auto }
   #toolbar, #scenario-form, #command-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 }
   #command { flex: 1; min-width: 12em }
-  table { border-collapse: collapse; width: 100%; white-space: normal }
+  table { border-collapse: collapse; table-layout: fixed; min-width: 580px; width: 100%; white-space: normal }
+  col.variable { width: 30% }
+  col.mode { width: 100px }
+  col.type { width: 88px }
+  col.action { width: 88px }
   th { position: sticky; top: 0; background: silver; text-align: left }
   td, th { padding: 4px 6px; border-bottom: 1px solid #ddd; vertical-align: top }
-  td:nth-child(2) { overflow-wrap: anywhere }
+  td:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  td:nth-child(n+3), th:nth-child(n+3) { white-space: nowrap }
   article { padding: 6px 8px; border-bottom: 1px solid silver }
   article pre { margin: 4px 0; border: 0; padding: 0 }
   #actions, dialog { background: silver; border: 2px outset white; padding: 5px }
@@ -133,6 +138,13 @@
     const table = view === "table" ? element("table") : null;
     const body = table?.createTBody();
     if (table) {
+      const columns = element("colgroup");
+      for (const name of ["variable", "value", "mode", "type", "action"]) {
+        const column = element("col");
+        column.className = name;
+        columns.append(column);
+      }
+      table.prepend(columns);
       const header = table.createTHead().insertRow();
       for (const label of ["Variable", "Value", "Mode", "Type", "Actions"]) header.append(element("th", label));
     }
@@ -142,6 +154,7 @@
       const actions = attachActions(node, row);
       if (body) {
         for (const value of [row.name, format(row.value), row.mode, row.kind]) node.insertCell().textContent = value;
+        node.cells[1].title = node.cells[1].textContent;
         const cell = node.insertCell();
         if (actions) cell.append(actions);
       } else {

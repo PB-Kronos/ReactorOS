@@ -10,7 +10,12 @@ const toneMap: Record<Annunciator["tone"], number[]> = { low: [330], high: [880]
 
 export const AnnunciatorPanel = ({ annunciators, page = document.body.dataset.rbwrPanel || "status", enabled = true }: Props) => {
   const context = useRef<AudioContext | null>(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const kiosk = Boolean(sessionStorage.getItem("reactoros-debian-operator"));
+  const [audioEnabled, setAudioEnabled] = useState(() =>
+    kiosk && localStorage.getItem("rbwr-kiosk-alarm-audio") !== "false");
+  useEffect(() => {
+    if (kiosk) localStorage.setItem("rbwr-kiosk-alarm-audio", String(audioEnabled));
+  }, [kiosk, audioEnabled]);
   const [ambienceEnabled, setAmbienceEnabled] = useState(() => localStorage.getItem("rbwr-ambience-enabled") === "true");
   const [lampTest, setLampTest] = useState(false);
   const [windows, setWindows] = useState<Record<string, WindowState>>({});

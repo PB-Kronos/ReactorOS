@@ -18,10 +18,10 @@ fi
 
 lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
     --debian-installer none --apt-recommends false --cache false \
-    --archive-areas main --bootappend-live 'boot=live components username=operator noautologin persistence persistence-label=REACTOROS_PERSIST persistence-media=removable-usb'
+    --archive-areas main --bootappend-live 'boot=live components username=operator noautologin persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
 
 mkdir -p config/package-lists
-printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv \
+printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \
     lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
     dbus-x11 openbox firefox-esr fonts-dejavu-core python3 iproute2 procps \
     thunar mousepad ristretto xterm pipewire-audio wireplumber curl ca-certificates openssl \

@@ -86,8 +86,20 @@ overwrites that drive. Reboot, choose the USB in the PC's boot menu, and test
 Debian sign-in and the ReactorOS kiosk.
 
 A plain live USB forgets installed updates and user changes after reboot.
-For persistence, use free space after the written image to create an ext4
-partition labelled `REACTOROS_PERSIST` and put a file named
-`persistence.conf` at its root with the single line `/ union`. Verify
-persistence on a test stick before relying on it. The live image is an amd64
-build, and its firmware compatibility still needs testing on the target PC.
+For persistence, use Linux to create an ext4 partition labelled
+`REACTOROS_DATA` in the free space after the written image, or on a second USB
+drive connected before boot. Format only the intended data partition.
+At the root of that partition, create `persistence.conf` containing `/ union`
+on a single line. This saves changes to the live system, including accounts,
+roles, home folders, databases and installed application updates.
+
+The boot entry searches USB storage by default. To use a dedicated partition
+on an internal drive, give it the same label and configuration, then remove
+`persistence-media=removable-usb` from the boot entry's kernel arguments. A
+temporary boot menu edit applies to that boot only. Use a single matching
+partition to make the intended storage unambiguous.
+
+Verify persistence by creating a test file in your home folder, rebooting
+with the same persistence volume attached, and checking the file is still
+there. The live image is an amd64 build, and its firmware compatibility still
+needs testing on the target PC.

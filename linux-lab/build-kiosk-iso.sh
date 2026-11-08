@@ -18,7 +18,7 @@ fi
 
 lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
     --debian-installer none --apt-recommends false --cache false \
-    --archive-areas main --bootappend-live 'boot=live components username=operator noautologin persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
+    --archive-areas main --bootappend-live 'boot=live components username=reactor persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
 
 mkdir -p config/package-lists
 printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \

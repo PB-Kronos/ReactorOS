@@ -16,4 +16,5 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
 cp -r "$root/rbwr/dist" "$stage/rbwr/"
 cp "$lab/kiosk.html" "$lab/plant-tools.html" "$stage/rbwr/dist/"
 printf '%s\n' "$version" > "$stage/VERSION"
+chmod 0755 "$stage"
 tar -czf "$output/reactoros-update.tar.gz" -C "$stage" .

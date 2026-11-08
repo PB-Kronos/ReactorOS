@@ -25,6 +25,24 @@ installed machines.
 
 ## Set up an existing Debian install
 
+For the VirtualBox kiosk, attach the updater setup disc from Windows with
+`./linux-lab/Attach-Updater-Setup.ps1 -PublicKey ./release-public.pem`.
+In the guest, sign out of the kiosk and run this from the Debian admin console
+to configure the updater and apply the latest published release:
+
+```sh
+sudo mkdir -p /mnt/reactoros-updater &&
+  sudo mount -o ro /dev/sr1 /mnt/reactoros-updater &&
+  sudo sh /mnt/reactoros-updater/install-updater.sh https://github.com/PB-Kronos/ReactorOS &&
+  sudo /usr/local/sbin/reactoros-update
+```
+
+The disc installs the updater, pins the public key, and saves the repo URL.
+After setup, use `sudo /usr/local/sbin/reactoros-update` while signed out of
+the kiosk to apply a newer signed release.
+
+For a manual setup without the disc, use the steps below.
+
 From a Debian admin console, install the updater from trusted source media,
 with the kiosk signed out. Substitute your actual GitHub owner and repo.
 

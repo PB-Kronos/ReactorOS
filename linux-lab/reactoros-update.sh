@@ -6,11 +6,17 @@ case "${1:-}" in
 esac
 test "$(id -u)" -eq 0 || { echo 'Run with sudo.' >&2; exit 1; }
 app=/opt/reactoros
-test -f "$app/kiosk-session.sh"
+test -f "$app/kiosk-session.sh" || { echo 'Install the ReactorOS kiosk first.' >&2; exit 1; }
 config=/etc/reactoros
+test -s "$config/update-repo" && test -s "$config/update-public.pem" || {
+    echo 'Updater is not configured. Run install-updater.sh from the ReactorOS setup disc.' >&2
+    exit 1
+}
 repo=$(cat "$config/update-repo")
-printf '%s\n' "$repo" | grep -Eq '^[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+$'
-test -s "$config/update-public.pem"
+printf '%s\n' "$repo" | grep -Eq '^[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+$' || {
+    echo "Invalid GitHub repository in $config/update-repo." >&2
+    exit 1
+}
 exec 9>/run/lock/reactoros-update.lock
 flock -n 9 || { echo 'Another update is already running.' >&2; exit 1; }
 require_idle() {
@@ -37,6 +43,8 @@ openssl pkeyutl -verify -pubin -inkey "$config/update-public.pem" -rawin \
 
 mkdir "$stage/app"
 tar -xzf "$stage/reactoros-update.tar.gz" --no-same-owner --no-same-permissions -C "$stage/app"
+# An archive may carry restrictive permissions on its top-level directory.
+chmod 0755 "$stage/app"
 version=$(cat "$stage/app/VERSION")
 printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
 current=$(cat "$app/VERSION" 2>/dev/null || echo v0.0.0)

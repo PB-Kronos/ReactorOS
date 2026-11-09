@@ -20,8 +20,10 @@ Keep an offline backup. Deliver the public PEM to each machine over a trusted
 path. The updater verifies the downloaded archive with that pinned key.
 
 Push a version tag such as `v1.0.0` to build, sign and publish an update.
-Use a new version for each release. Ordinary source pushes do not update
-installed machines.
+Each tagged release also builds the USB ISO and attaches both the ISO and its
+SHA-256 file to that GitHub Release. Ordinary source pushes do not build an
+ISO or update installed machines; the image is not retained as a separate
+Actions artifact.
 
 ## Set up an existing Debian install
 
@@ -75,9 +77,8 @@ update. Check results with `journalctl -u reactoros-update.service`.
 
 ## Build and write a USB
 
-After approving the VM build, run **Build ReactorOS USB image** under
-GitHub Actions and download the `ReactorOS-amd64` artifact. Extract the ISO
-and SHA-256 file, then compare the hash with PowerShell
+Open the latest GitHub Release and download `ReactorOS-amd64.iso` plus its
+SHA-256 file from the release assets. Compare the hash with PowerShell
 `Get-FileHash .\ReactorOS-amd64.iso -Algorithm SHA256`.
 
 On Windows, use an image writer such as Rufus and choose DD image mode if it

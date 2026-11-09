@@ -6,6 +6,7 @@ import hmac
 import importlib.util
 import math
 import os
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -81,6 +82,17 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json({"error": str(exc)}, 400)
                 except (RuntimeError, OSError):
                     return self.send_json({"error": "Database service unavailable"}, 503)
+        if self.path == "/api/desktop/sign-out":
+            if not self.kiosk_request(origin):
+                return self.send_json({"error": "Permission denied"}, 403)
+            try:
+                pid = int(os.environ.get("REACTOROS_KIOSK_PID", "0"))
+                if pid <= 1 or pid != os.getppid():
+                    raise ValueError
+                os.kill(pid, signal.SIGUSR1)
+            except (ValueError, OSError):
+                return self.send_json({"error": "Kiosk session unavailable"}, 503)
+            return self.send_json({"signingOut": True}, 202)
         if self.path == "/api/desktop/terminal":
             if not self.kiosk_request(origin) or not permitted("terminal:execute"):
                 return self.send_json({"error": "Debian terminal access denied"}, 403)

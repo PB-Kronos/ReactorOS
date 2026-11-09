@@ -84,8 +84,9 @@ On Windows, use an image writer such as Rufus and choose DD image mode if it
 asks. Select the actual USB device by size and name. Writing the image
 overwrites that drive. Reboot, choose the USB in the PC's boot menu, and
 select **Live system (amd64)**. Debian creates the `reactor` account and
-signs in automatically to start the ReactorOS kiosk. The account's default
-password is `live` if manual sign-in is needed.
+opens the LightDM sign-in screen. Sign in as `reactor` with the initial
+password `live` to start the ReactorOS kiosk. Use **Start → Sign Out**
+to return to LightDM.
 
 A plain live USB forgets installed updates and user changes after reboot.
 For persistence, use Linux to create an ext4 partition labelled

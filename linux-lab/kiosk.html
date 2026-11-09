@@ -399,6 +399,19 @@
       catch (error) { updateStatus.textContent = error.message; }
     };
     menu.append(button("Settings", () => showSettings(sudoGroup)));
+    menu.append(button("Sign Out", async () => {
+      showMenu(false);
+      if (!confirm("Sign out of ReactorOS? Save any open work first.")) return;
+      try {
+        const reply = await fetch("/api/desktop/sign-out", {
+          method: "POST", headers: { ...sessionHeaders(), "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!reply.ok) throw new Error((await reply.json()).error);
+      } catch (error) {
+        alert("Could not sign out: " + error.message);
+      }
+    }));
     start.onclick = () => showMenu(menu.hidden);
     start.disabled = false;
     void listenForKioskFullscreenKey();

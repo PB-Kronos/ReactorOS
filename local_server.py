@@ -162,6 +162,28 @@ class Handler(SimpleHTTPRequestHandler):
                     command.append("--gui")
             else:
                 command = DESKTOP_APPS[app].copy()
+                if app == "audio-settings":
+                    try:
+                        start = subprocess.run(
+                            ["systemctl", "--user", "start", "pipewire.socket",
+                             "pipewire-pulse.socket", "pipewire.service",
+                             "pipewire-pulse.service", "wireplumber.service"],
+                            capture_output=True, text=True, timeout=8,
+                        )
+                        if start.returncode:
+                            detail = (start.stderr or start.stdout).strip()
+                            return self.send_json({
+                                "error": "PipeWire could not start in this user session. " + detail
+                            }, 503)
+                        probe = subprocess.run(["pactl", "info"], capture_output=True,
+                                               text=True, timeout=4)
+                    except (OSError, subprocess.TimeoutExpired) as exc:
+                        return self.send_json({"error": f"Audio service is not ready: {exc}"}, 503)
+                    if probe.returncode:
+                        detail = (probe.stderr or probe.stdout).strip()
+                        return self.send_json({
+                            "error": "PipeWire Pulse endpoint is not responding. " + detail
+                        }, 503)
                 if app == "disk-management" and not Path(command[0]).is_file():
                     return self.send_json({
                         "error": "GParted is not installed. Install the Debian package with sudo apt-get install gparted."

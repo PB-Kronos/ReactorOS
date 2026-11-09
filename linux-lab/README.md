@@ -28,7 +28,9 @@ PipeWire services. Sound Settings opens the mixer for choosing the correct
 output device, port, and volume. The update installs PipeWire's ALSA bridge
 and ALSA diagnostic tools as well as the audio services. It installs Debian's
 systemd-integrated user D-Bus session so PipeWire's per-user services can be
-controlled from the kiosk session.
+controlled from the kiosk session. The kiosk explicitly starts the Pulse
+endpoint before launching the mixer and reports a startup error instead of
+leaving the mixer stuck while it waits for a missing server.
 It also disables the stale installer-DVD entry in APT and adds official Debian
 Trixie network mirrors when an offline install has no usable mirror configured.
 It also adds a read-only view of recent SQLite server events and three

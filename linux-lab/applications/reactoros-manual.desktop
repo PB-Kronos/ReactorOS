@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Operator Manual
+Comment=ReactorOS operations manual
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /manual
+Icon=applications-system
+Categories=Education;Documentation;
+StartupNotify=true

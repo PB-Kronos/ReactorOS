@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Plant Database
+Comment=Live plant variables and scenarios
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /plant-tools.html?tool=database
+Icon=applications-system
+Categories=System;Science;
+StartupNotify=true

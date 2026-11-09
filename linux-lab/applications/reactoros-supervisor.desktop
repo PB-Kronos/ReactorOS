@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Plant Supervisor
+Comment=Plant supervisor program
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /supervisor
+Icon=applications-system
+Categories=System;
+StartupNotify=true

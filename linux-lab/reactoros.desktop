@@ -1,5 +1,6 @@
 [Desktop Entry]
-Name=ReactorOS
-Comment=ReactorOS kiosk workstation
+Name=ReactorOS Desktop
+Comment=ReactorOS Windows 95-style GNOME session
 Exec=/bin/sh /opt/reactoros/kiosk-session.sh
 Type=Application
+DesktopNames=ReactorOS;GNOME;

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Status Desk
+Comment=ReactorOS service status
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /status-desk
+Icon=applications-system
+Categories=System;
+StartupNotify=true

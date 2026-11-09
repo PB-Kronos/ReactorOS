@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Plant Operations Terminal
+Comment=Plant and Debian operations terminal
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /
+Icon=applications-system
+Categories=System;Utility;
+StartupNotify=true

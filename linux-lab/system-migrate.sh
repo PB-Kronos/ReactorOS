@@ -97,7 +97,7 @@ Suites: trixie-security
 Components: main non-free-firmware
 ''')
 PY
-packages='dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils'
+packages='dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
 missing=''
 for package in $packages; do
     if ! dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then
@@ -124,3 +124,37 @@ cat > /etc/NetworkManager/conf.d/10-reactoros-managed.conf <<'EOF'
 managed=true
 EOF
 systemctl enable --now NetworkManager.service
+
+install -d -m 0755 /etc/dconf/profile /etc/dconf/db/reactoros.d \
+    /usr/share/xsessions /usr/share/themes/ReactorOS95/gnome-shell \
+    /opt/reactoros/share/applications
+printf '%s\n' 'user-db:reactoros' 'system-db:reactoros' > /etc/dconf/profile/reactoros
+cat > /etc/dconf/db/reactoros.d/00-reactoros <<'EOF'
+[org/gnome/shell]
+enabled-extensions=['apps-menu@gnome-shell-extensions.gcampax.github.com','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
+disable-user-extensions=false
+
+[org/gnome/shell/extensions/dash-to-panel]
+panel-position='BOTTOM'
+panel-size=34
+
+[org/gnome/shell/extensions/user-theme]
+name='ReactorOS95'
+
+[org/gnome/desktop/background]
+picture-options='none'
+color-shading-type='solid'
+primary-color='#008080'
+secondary-color='#008080'
+
+[org/gnome/desktop/interface]
+color-scheme='prefer-light'
+gtk-theme='Adwaita'
+icon-theme='Adwaita'
+EOF
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+install -m 0644 "$script_dir/reactoros.desktop" /usr/share/xsessions/reactoros.desktop
+install -m 0644 "$script_dir/reactoros-gnome-shell.css" \
+    /usr/share/themes/ReactorOS95/gnome-shell/gnome-shell.css
+cp "$script_dir"/applications/*.desktop /opt/reactoros/share/applications/
+dconf update

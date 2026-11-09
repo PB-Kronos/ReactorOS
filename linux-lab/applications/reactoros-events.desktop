@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Server Event Log
+Comment=Local ReactorOS service event log
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /plant-tools.html?tool=server
+Icon=applications-system
+Categories=System;
+StartupNotify=true

@@ -4,9 +4,14 @@ GitHub release and bootable USB instructions are in [Releases and USB](RELEASES.
 
 **ReactorOS Kiosk Lab** is the separate persistent VM for testing the
 Windows 95-style workstation. Its VirtualBox configuration and virtual
-disk live under `linux-lab/ReactorOS Kiosk Lab`. It uses Debian's
-LightDM login and starts ReactorOS fullscreen after sign-in. The lab
-account is `operator` with the initial lab password `live`.
+disk live under `linux-lab/ReactorOS Kiosk Lab`. For installed systems, the
+ReactorOS desktop is a separately selectable GDM session built on GNOME Shell.
+It uses a dedicated dconf profile, application directory and theme, so the
+user's regular GNOME and KDE sessions keep their own settings and menus. Pick
+**ReactorOS Desktop** from GDM's session selector at sign-in. Mutter manages
+native movable windows and multi-monitor placement; the RBWR program opens
+maximized by default. The lab account is `operator` with the initial lab
+password `live`.
 The desktop reads the real Debian username from the local server.
 
 For an existing kiosk VM, run `Attach-Kiosk-Update.ps1` on the Windows
@@ -86,10 +91,13 @@ ip -brief address
 systemctl --failed
 ```
 
-The standard image boots to a console. A graphical session with a browser
-is needed to run the control room. Until that is open, the plant endpoint
-reports the reactor offline. Keep real Linux administration in the guest
-shell. The simulator terminal currently accepts plant commands only.
+The standard image boots to a console. To test the native ReactorOS GNOME
+session, choose **ReactorOS Desktop** on the GDM sign-in screen. The ordinary
+GNOME and KDE sessions remain independently selectable. Firefox is retained
+as the Internet application; ReactorOS programs open in movable native GTK
+windows with the simulation content hosted locally. Keep real Linux
+administration in the guest shell. The simulator terminal currently accepts
+plant commands only.
 
 To recreate the VM, place the verified Debian 13.7.0 amd64 standard live ISO
 in this directory and run `Setup-Linux-Lab.ps1` from PowerShell. The VM's

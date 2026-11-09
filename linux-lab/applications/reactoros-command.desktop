@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=RBWR Command Console
+Comment=Advanced operator terminal
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /mainframe
+Icon=applications-system
+Categories=System;Utility;
+StartupNotify=true

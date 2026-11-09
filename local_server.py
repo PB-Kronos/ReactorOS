@@ -27,7 +27,8 @@ DESKTOP_APPS = {
     "disk-management": ["/usr/sbin/gparted"],
     "network": ["nm-connection-editor"],
     "audio-settings": ["pavucontrol"],
-    "display-settings": ["arandr"],
+    # Mutter owns display layout in the native GNOME session (including Wayland).
+    "display-settings": ["gnome-control-center", "display"],
 }
 UPDATER = Path("/usr/local/sbin/reactoros-update")
 UPDATE_RESULT = Path("/run/reactoros-update-result")
@@ -142,8 +143,8 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json({"error": "Set up the signed updater before updating."}, 409)
                 maintenance = (
                     'echo "Update started" > /run/reactoros-update-result; '
-                    "trap 'systemctl start lightdm' EXIT; "
-                    "systemctl stop lightdm && "
+                    "trap 'systemctl start display-manager' EXIT; "
+                    "systemctl stop display-manager && "
                     "if [ -x /opt/reactoros/reactoros-update.sh ]; then "
                     "install -m 0755 /opt/reactoros/reactoros-update.sh /usr/local/sbin/reactoros-update; fi && "
                     "if [ -x /opt/reactoros/system-migrate.sh ]; then /opt/reactoros/system-migrate.sh; fi && "

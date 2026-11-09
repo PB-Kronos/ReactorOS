@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=RBWR Unit 2
+Comment=Run the RBWR simulation
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-webapp.py /reactor
+Icon=applications-system
+Categories=Science;Education;
+StartupNotify=true

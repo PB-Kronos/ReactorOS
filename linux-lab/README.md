@@ -27,6 +27,8 @@ and whether output devices are visible, and can restart the current user's
 PipeWire services. Sound Settings opens the mixer for choosing the correct
 output device, port, and volume. The update installs PipeWire's ALSA bridge
 and ALSA diagnostic tools as well as the audio services.
+It also disables the stale installer-DVD entry in APT, which otherwise makes
+`apt update` fail with a missing Debian Release file even when the network is up.
 It also adds a read-only view of recent SQLite server events and three
 simulation overrides under Live Variables. The kiosk's command console
 uses the Debian identity with the simulator's existing supervisor access.

@@ -78,7 +78,7 @@
   const programs = new Map([
     ["/", "Plant Operations Terminal"], ["/reactor", "RBWR Unit 2"],
     ["/status-desk", "Status Desk"], ["/supervisor", "Plant Supervisor"],
-    ["/mainframe", "RBWR Command Console"], ["/manual", "Operator Manual"],
+    ["/mainframe", "Advanced Operator Terminal"], ["/manual", "Operator Manual"],
     ["/plant-tools.html?tool=database", "Plant Database"], ["/plant-tools.html?tool=server", "Server Event Log"],
   ]);
   const desktop = document.querySelector("#desktop");
@@ -346,6 +346,7 @@
     if (typeof name !== "string" || !name) throw new Error("Debian account unavailable");
     sessionStorage.setItem("reactoros-debian-operator", name);
     sessionStorage.setItem("reactoros-permissions", JSON.stringify(permissions));
+    if (!localStorage.getItem("unit2-plant-transport")) localStorage.setItem("unit2-plant-transport", "local");
     localStorage.setItem("unit2-operator-name", name);
     identity.textContent = name;
     settingsKey = "reactoros-display:" + name;

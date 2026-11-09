@@ -5,6 +5,6 @@ PROGRAMS = {
     "reactor": ("RBWR Unit 2", "/reactor"),
     "status-desk": ("Status Desk", "/status-desk"),
     "supervisor": ("Plant Supervisor", "/supervisor"),
-    "mainframe": ("Mainframe Terminal", "/mainframe"),
+    "mainframe": ("Advanced Operator Terminal", "/mainframe"),
     "manual": ("Operator Manual", "/manual"),
 }

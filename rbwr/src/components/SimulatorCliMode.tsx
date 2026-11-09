@@ -27,15 +27,16 @@ import {
 
 interface SimulatorCliModeProps {
   open: boolean;
-  onClose: () => void;
-  onCommand: (command: string) => string;
+  onClose?: () => void;
+  standalone?: boolean;
+  onCommand: (command: string) => string | Promise<string>;
   liveStatus: string;
   plantAssignment?: PlantAssignment | null;
   onIncomingCall?: () => void;
   onOpenDatabase?: () => boolean;
 }
 
-export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAssignment, onIncomingCall, onOpenDatabase }: SimulatorCliModeProps) {
+export function SimulatorCliMode({ open, onClose, standalone, onCommand, liveStatus, plantAssignment, onIncomingCall, onOpenDatabase }: SimulatorCliModeProps) {
   const [command, setCommand] = useState("");
   const [terminalMode, setTerminalMode] = useState<"entry" | "editor">("entry");
   const [department, setDepartment] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
       return JSON.parse(sessionStorage.getItem("rbwr-cli-history") || "null") || [
         "UNIT 2 OPERATIONS TERMINAL // ENTRY MODE",
         "CALL 0027 · 0028 · 0029 · 0100 · 5682 · *#99, or enter EDITOR.",
-        "Type HELP for the department directory. LOGIN <name>, LOGOUT, and LEADERBOARD are always available.",
+        "Type HELP for the department directory and available commands.",
       ];
     } catch {
       return ["UNIT 2 SIMULATOR // CLI MODE", "Type HELP for available commands."];
@@ -78,7 +79,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
   }, [open]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && open) onClose();
+      if (event.key === "Escape" && open) onClose?.();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -110,6 +111,13 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
     const timer = window.setInterval(refresh, 1_500);
     return () => { active = false; window.clearInterval(timer); };
   }, [activePrivateCall?.id]);
+  const activeCallId = activePrivateCall?.id;
+  useEffect(() => {
+    if (!activeCallId) return;
+    const hangUp = () => { void updatePlantPhoneCall(activeCallId, "ended").catch(() => {}); };
+    window.addEventListener("pagehide", hangUp);
+    return () => window.removeEventListener("pagehide", hangUp);
+  }, [activeCallId]);
   useEffect(() => {
     if (!plantAssignment || !ownPhone) return;
     let active = true;
@@ -160,10 +168,11 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
     const endpoint = getPhoneEndpoint(code);
     if (endpoint?.type === "automated") {
       if (code === "0100" && (commandText === "points" || commandText === "status")) return onCommand("hr points");
-      const action = automatedPhoneCommand(endpoint, commandText, plantAssignment?.unitNumber);
+      const unit = plantAssignment?.unitNumber ?? 2;
+      const action = automatedPhoneCommand(endpoint, commandText, unit);
       if (!action) return `AUTOMATED ${endpoint.label.toUpperCase()} — request unavailable. Check the service procedure for this extension.`;
+      if (action.targetUnit === unit) return onCommand(action.command);
       if (!plantAssignment) return "A shared Unit plant room is required to route this automated service request.";
-      if (action.targetUnit === plantAssignment.unitNumber) return onCommand(action.command);
       await queuePlantRemoteCommand(plantAssignment.roomCode, action.targetUnit, action.command);
       return `REQUEST ROUTED TO UNIT ${action.targetUnit} — ${action.command.toUpperCase()}. Await remote unit acknowledgement.`;
     }
@@ -191,7 +200,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
     const choices = greetings[code] || ["Operations, what do you need?"];
     return choices[Math.floor(Math.random() * choices.length)];
   };
-  const executeEntry = (text: string) => {
+  const executeEntry = async (text: string) => {
     const normalized = text.toLowerCase().trim().replace(/\s+/g, " ");
     if (normalized === "editor") {
       if (onOpenDatabase) return onOpenDatabase() ? "Opened Plant Database." : "Plant Database access is unavailable.";
@@ -199,7 +208,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
       return "SIMULATION EDITOR ENABLED. Type HELP for live control commands; EXIT returns to entry mode.";
     }
     if (normalized === "help" || normalized === "directory")
-      return `PLANT PHONE DIRECTORY\n${phoneDirectoryText()}\n\nCALL <extension> [message] — dial a manual or automated line.\nManual lines support live chat when the receiving unit opens its CLI.\nEDITOR Simulation editor\n\nSESSION\nLOGIN <name> records point scoring\nLOGOUT enters guest mode (no points)\nLEADERBOARD shows the top operators`;
+      return `PLANT PHONE DIRECTORY\n${phoneDirectoryText()}\n\nCALL <extension> — dial a manual or automated line.\nManual calls and PMS require a shared plant room.\nEDITOR ${onOpenDatabase ? "Opens Plant Database" : "Simulation editor"}\nSTATUS · TRIP STATUS · BUS AVAILABILITY · FUEL STATUS · NEXT DEMAND\nVALUES · GET <value> · SCRAM · LEADERBOARD`;
     if (normalized === "status") return onCommand("operations status");
     if (normalized === "pms") return "PMS: use PMS <extension> <message> to send without opening a live call. Manual extensions are listed in DIRECTORY.";
     if (normalized.startsWith("pms ")) {
@@ -221,6 +230,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
       return `PMS TRANSMITTED TO ${endpoint.extension} ${endpoint.label}.`;
     }
     if (normalized === "leaderboard" || normalized === "logout" || normalized.startsWith("login ")) return onCommand(text);
+    if (normalized === "values" || normalized.startsWith("get ") || normalized === "scram") return onCommand(text);
     if (["trip status", "trips", "trip"].includes(normalized)) return onCommand("operations trips");
     if (["bus availability", "bus status", "power status"].includes(normalized)) return onCommand("operations buses");
     if (["fuel status", "fuel"].includes(normalized)) return onCommand("operations fuel");
@@ -238,7 +248,7 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
     }
     return "ENTRY MODE: call a department number, enter EDITOR, or type HELP.";
   };
-  const execute = () => {
+  const execute = async () => {
     const text = command.trim();
     if (!text || calling) return;
     if (text.toLowerCase() === "clear") {
@@ -250,6 +260,11 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
         const endpoint = getPhoneEndpoint(code);
         if (!endpoint) {
           setHistory((previous) => [...previous, `> ${text}`, "UNAVAILABLE EXTENSION — this number is reserved or not installed in the Unit 2 phone network."]);
+          setCommand("");
+          return;
+        }
+        if (endpoint.type === "manual" && !plantAssignment) {
+          setHistory((previous) => [...previous, `> ${text}`, "Manual calls require a shared plant room."]);
           setCommand("");
           return;
         }
@@ -288,16 +303,22 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
         }, 850);
         return;
       }
-      const result = executeEntry(text);
-      setHistory((previous) => [...previous, `> ${text}`, result]);
+      setCommand("");
+      setHistory((previous) => [...previous, `> ${text}`]);
+      const result = await executeEntry(text);
+      setHistory((previous) => [...previous, result]);
+      return;
     } else if (terminalMode === "editor" && text.toLowerCase() === "exit") {
       setTerminalMode("entry"); setDepartment(null);
       setHistory((previous) => [...previous, `> ${text}`, "EDITOR CLOSED. ENTRY MODE READY."]);
     } else if (terminalMode === "editor" && text.toLowerCase() === "watch") {
       setHistory((previous) => [...previous, "> watch", liveStatus]);
     } else {
-      const result = terminalMode === "editor" ? onCommand(text) : executeEntry(text);
-      setHistory((previous) => [...previous, `> ${text}`, result]);
+      setCommand("");
+      setHistory((previous) => [...previous, `> ${text}`]);
+      const result = await onCommand(text);
+      setHistory((previous) => [...previous, result]);
+      return;
     }
     setCommand("");
   };
@@ -331,16 +352,16 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
   };
 
   return (
-    <div className="fixed inset-0 z-[90] bg-slate-950 p-2 sm:bg-slate-950/75 sm:p-6 sm:backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Simulator CLI mode">
-      <div className="relative mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-xl border border-emerald-400/40 bg-[#020a08] shadow-[0_0_80px_rgba(16,185,129,.2)]">
+    <div className={standalone ? "fixed inset-0 bg-[#c0c0c0] p-1" : "fixed inset-0 z-[90] bg-slate-950 p-2 sm:bg-slate-950/75 sm:p-6 sm:backdrop-blur-sm"} role={standalone ? "main" : "dialog"} aria-modal={standalone ? undefined : true} aria-label="Advanced Operator Terminal">
+      <div className={`relative flex h-full flex-col overflow-hidden bg-[#020a08] ${standalone ? "border-2 border-[#808080]" : "mx-auto max-w-6xl rounded-xl border border-emerald-400/40 shadow-[0_0_80px_rgba(16,185,129,.2)]"}`}>
         <header className="flex items-center justify-between border-b border-emerald-400/25 bg-emerald-950/20 px-4 py-3 font-mono">
           <div className="flex items-center gap-2 text-sm font-bold text-emerald-300"><Terminal className="h-4 w-4" /> UNIT 2 // LIVE CLI</div>
-          <Button size="sm" variant="ghost" className="text-emerald-200 hover:bg-emerald-900/40" onClick={onClose}><X className="mr-1 h-4 w-4" /> RETURN TO PANEL</Button>
+          {onClose && <Button size="sm" variant="ghost" className="text-emerald-200 hover:bg-emerald-900/40" onClick={onClose}><X className="mr-1 h-4 w-4" /> RETURN TO PANEL</Button>}
         </header>
         <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_290px]">
           <section className="flex min-h-0 flex-col border-b border-emerald-400/20 lg:border-b-0 lg:border-r">
             <pre ref={outputRef} className="rbwr-selectable min-h-0 flex-1 overflow-auto whitespace-pre-wrap p-4 font-mono text-xs leading-relaxed text-emerald-300 sm:text-sm">{history.join("\n")}</pre>
-            <form className="flex border-t border-emerald-400/25 bg-black/30 p-3" onSubmit={(event) => { event.preventDefault(); execute(); }}>
+            <form className="flex border-t border-emerald-400/25 bg-black/30 p-3" onSubmit={(event) => { event.preventDefault(); void execute(); }}>
               <span className="mr-2 pt-2 font-mono font-black text-emerald-400">&gt;</span>
               <input ref={inputRef} value={command} disabled={calling} onChange={(event) => setCommand(event.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-sm text-emerald-100 outline-none placeholder:text-emerald-800 disabled:cursor-wait disabled:text-emerald-700" placeholder={calling ? "connecting department line..." : terminalMode === "editor" ? "status · get reactor.pressure · turbine.bypass set 0" : department ? "department command · back" : "call 0029 · editor · help"} autoComplete="off" spellCheck={false} />
               <Button type="submit" size="sm" disabled={calling} className="ml-2 bg-emerald-500 text-slate-950 hover:bg-emerald-400">{calling ? "DIALING" : "RUN"}</Button>
@@ -434,6 +455,8 @@ export function SimulatorCliMode({ open, onClose, onCommand, liveStatus, plantAs
               void runDepartmentCommand(activeCall, request).then((response) => {
                 setCallTranscript((previous) => [...previous, `YOU: ${spoken}`, response]);
                 setHistory((previous) => [...previous, `[${activeCall}] ${request}`, response]);
+              }).catch(() => {
+                setCallTranscript((previous) => [...previous, "The department request could not be completed."]);
               });
               setCallRequest("");
             }}>

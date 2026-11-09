@@ -24,7 +24,7 @@ import {
   SimulatorConsolePanel,
   type PhysicsTuning,
 } from "@/components/SimulatorConsolePanel";
-import { SimulatorCliMode } from "@/components/SimulatorCliMode";
+import { WORKSTATION_CONSOLE, type ConsoleReply, type ConsoleRequest } from "@/lib/workstationConsole";
 import { TurbineAuxPanel } from "@/components/TurbineAuxPanel";
 import { FeedwaterPumpBayPanel } from "@/components/FeedwaterPumpBayPanel";
 import { PolisherPanel, type PolisherTarget, type RegenTank } from "@/components/PolisherPanel";
@@ -214,7 +214,6 @@ export default function ReactorSimulator() {
   useEffect(() => {
     if (unitStation.role !== "mcr" && !unitStation.panels.includes(active)) setActive("status");
   }, [active, unitStation.role]);
-  const [consoleOpen, setConsoleOpen] = useState(false);
   // Panel stations never advance their own physics clock. The primary unit
   // remains the simulation authority, avoiding parallel-clock drift.
   const [simulationPaused, setSimulationPaused] = useState(secondaryWindow || !isPhysicsAuthority);
@@ -3432,7 +3431,6 @@ export default function ReactorSimulator() {
     sessionStorage.removeItem("rbwr-pending-console-command");
     sessionStorage.removeItem("rbwr-pending-console-commands");
     setActive("status");
-    setConsoleOpen(false);
     setTutorialEnabled(false);
     setTutorialLevel(1);
     setTemperature(25);
@@ -4012,6 +4010,36 @@ export default function ReactorSimulator() {
   workstationScram.current = scram;
   const workstationCommand = useRef(runConsoleCommand);
   workstationCommand.current = runConsoleCommand;
+  const terminalStatus = useRef("");
+  terminalStatus.current = `CLOCK ${simulationPaused ? "PAUSED" : "RUNNING"}\n\nREACTOR\nAPRM ${aprm.toFixed(2)}% · ${temperature.toFixed(1)} °C\nRPV ${pressure.toFixed(0)} kPa · LEVEL ${reactorLevel.toFixed(2)} m\n\nMCC\nHOTWELL ${hotwellLevel.toFixed(2)} m · DA ${deaeratorLevel.toFixed(2)} m\nCST ${cstLevel.toFixed(2)} m · COND ${Math.round(condenserVacuum * 1000)} mbar\n\nTURBINE\n${actualRPM.toFixed(0)} RPM · ${turbineOutputMW.toFixed(1)} MW\nMAIN ${valveValue.toFixed(1)}% · BYPASS ${bypassValve.toFixed(1)}%\n\nELECTRICAL\nBUS A ${startupBusAvailable ? "ON" : "OFF"} · BUS B ${busBAvailable ? "ON" : "OFF"}\nBUS S ${safetyBusAvailable ? "ON" : "OFF"} · DC ${dcBusAvailable ? "ON" : "OFF"}`;
+  useEffect(() => {
+    if (!sessionRestored || secondaryWindow || !isPhysicsAuthority || stationControlsLocked ||
+        plantAssignment?.unitNumber === 1 || typeof BroadcastChannel === "undefined") return;
+    const kiosk = Boolean(sessionStorage.getItem("reactoros-debian-operator"));
+    if (kiosk &&
+        !JSON.parse(sessionStorage.getItem("reactoros-permissions") || "[]").includes("app:mainframe")) return;
+    const channel = new BroadcastChannel(WORKSTATION_CONSOLE);
+    const station = crypto.randomUUID();
+    channel.onmessage = ({ data }: MessageEvent<ConsoleRequest>) => {
+      if (typeof data?.id !== "string" || data.id.length > 64) return;
+      if (data.station !== undefined && data.station !== station) return;
+      const reply: ConsoleReply = {
+        replyTo: data.id, station, assignment: plantAssignment, status: terminalStatus.current,
+      };
+      if (data.station === station && typeof data.command === "string" && data.command.length <= 512) {
+        const command = data.command.trim().toLowerCase();
+        const allowed = /^(operations (status|trips|fuel|demand|buses)|hr points|maintenance (repair|unit refuel|edg refuel|turbine (repair|oil-check))|grid disconnect|fss (silence|reset|test)|leaderboard|login .+|logout|values|get [\w.-]+|scram)$/;
+        if (kiosk && !allowed.test(command)) {
+          reply.result = "Command unavailable here. Use Plant Database for simulation edits.";
+        } else {
+          try { reply.result = workstationCommand.current(data.command); }
+          catch { reply.result = "The control room could not execute that command."; }
+        }
+      }
+      channel.postMessage(reply);
+    };
+    return () => channel.close();
+  }, [sessionRestored, secondaryWindow, isPhysicsAuthority, stationControlsLocked, plantAssignment]);
   const workstationSession = useRef("");
   const workstationAck = useRef(new Set<string>());
   const applyWorkstationAprm = (value: number) => {
@@ -4404,17 +4432,6 @@ export default function ReactorSimulator() {
           {content}
         </div>
       </main>
-      <SimulatorCliMode
-        open={consoleOpen}
-        onClose={() => setConsoleOpen(false)}
-        onIncomingCall={() => setConsoleOpen(true)}
-        onCommand={runConsoleCommand}
-        onOpenDatabase={sessionStorage.getItem("reactoros-debian-operator")
-          ? () => Boolean(window.open("/plant-tools.html?tool=database"))
-          : undefined}
-        plantAssignment={plantAssignment}
-        liveStatus={`CLOCK ${simulationPaused ? "PAUSED" : "RUNNING"}\n\nREACTOR\nAPRM ${aprm.toFixed(2)}% · ${temperature.toFixed(1)} °C\nRPV ${pressure.toFixed(0)} kPa · LEVEL ${reactorLevel.toFixed(2)} m\n\nMCC\nHOTWELL ${hotwellLevel.toFixed(2)} m · DA ${deaeratorLevel.toFixed(2)} m\nCST ${cstLevel.toFixed(2)} m · COND ${Math.round(condenserVacuum * 1000)} mbar\n\nTURBINE\n${actualRPM.toFixed(0)} RPM · ${turbineOutputMW.toFixed(1)} MW\nMAIN ${valveValue.toFixed(1)}% · BYPASS ${bypassValve.toFixed(1)}%\n\nELECTRICAL\nBUS A ${startupBusAvailable ? "ON" : "OFF"} · BUS B ${busBAvailable ? "ON" : "OFF"}\nBUS S ${safetyBusAvailable ? "ON" : "OFF"} · DC ${dcBusAvailable ? "ON" : "OFF"}`}
-      />
       {tutorialEnabled && <TutorialCoach progress={{ level: tutorialLevel, objectiveMet: tutorialObjectiveMet, aprmHeld: tutorialAprmHold }} onAdvance={advanceTutorial} onExit={() => { setTutorialEnabled(false); setEvent("ADVANCED MODE ENABLED — tutorial exited."); }} />}
     </div>
   );

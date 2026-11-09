@@ -285,7 +285,11 @@
     const route = url.pathname === "/plant-tools.html" ? url.pathname + url.search : url.pathname;
     if (url.origin !== location.origin || !programs.has(route)) return null;
     showMenu(false);
-    const key = url.searchParams.get("window") === "panel" ? url.pathname + url.search : route;
+    const hasPlantInvite = url.pathname === "/reactor" && url.searchParams.has("plant") && url.searchParams.has("unit");
+    const stationKey = hasPlantInvite
+      ? `${route}?${["plant", "unit", "station"].map(name => `${name}=${encodeURIComponent(url.searchParams.get(name) || "")}`).join("&")}`
+      : route;
+    const key = url.searchParams.get("window") === "panel" ? url.pathname + url.search : stationKey;
     const existing = windows.get(key);
     if (existing) {
       existing.show();

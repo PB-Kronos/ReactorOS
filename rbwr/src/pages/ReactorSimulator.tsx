@@ -171,6 +171,10 @@ export default function ReactorSimulator() {
     if (assignment) savePlantAssignment(assignment);
     return assignment;
   });
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [joinInviteCode, setJoinInviteCode] = useState("");
+  const [joinUnitNumber, setJoinUnitNumber] = useState<1 | 2>(plantAssignment?.unitNumber || 2);
+  const [joinStationId, setJoinStationId] = useState(plantAssignment?.stationId || "U2-UNIT");
   const unitStation = getUnitStation(plantAssignment?.stationId);
   // The Unified Unit console is the preferred live authority. If it is open,
   // MCR follows its snapshots instead of running a competing physics loop.
@@ -4291,22 +4295,7 @@ export default function ReactorSimulator() {
             {plantSyncError && <p className="mt-1 text-[11px] text-amber-300">PLANT LINK: {plantSyncError}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => {
-              if (secondaryWindow) {
-                const mainUrl = new URL(window.location.href);
-                mainUrl.searchParams.delete("window");
-                mainUrl.searchParams.delete("panel");
-                window.location.assign(mainUrl.toString());
-                return;
-              }
-              const panelUrl = new URL(window.location.href);
-              panelUrl.searchParams.set("window", "panel");
-              panelUrl.searchParams.set("panel", active);
-              const popup = window.open(panelUrl.toString(), `unit2-${active}-station`, "popup=yes,width=1280,height=900,resizable=yes,scrollbars=yes");
-              if (!popup) setEvent("PANEL WINDOW BLOCKED — allow pop-ups for Unit 2, then try again.");
-            }} className="min-h-11 border-emerald-400/70 text-emerald-200 hover:bg-emerald-950">
-              {secondaryWindow ? "MAIN WINDOW" : "OPEN PANEL WINDOW"}
-            </Button>
+            <Button variant="outline" onClick={() => { setJoinInviteCode(plantAssignment?.roomCode || ""); setJoinUnitNumber(plantAssignment?.unitNumber || 2); setJoinStationId(plantAssignment?.stationId || "U2-UNIT"); setJoinDialogOpen(true); }} className="min-h-11 border-cyan-400/70 text-cyan-100 hover:bg-cyan-950">JOIN PLANT / STATION</Button>
             {!secondaryWindow && <Button variant="outline" onClick={() => {
               const desk = window.open("/status-desk", "unit2-status-desk", "popup=yes,width=1440,height=900,resizable=yes,scrollbars=yes");
               if (!desk) setEvent("STATUS DESK BLOCKED — allow pop-ups for Unit 2, then try again.");
@@ -4361,11 +4350,6 @@ export default function ReactorSimulator() {
             >
               PLANT SUPERVISOR
             </Button>
-            <Button variant="outline" disabled={!busEAvailable} onClick={reset} className="min-h-11">
-              {" "}
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
           </div>
         </header>
         <AnnunciatorPanel annunciators={annunciators} enabled={busEAvailable} />
@@ -4377,15 +4361,14 @@ export default function ReactorSimulator() {
             <BellRing className="mr-2 inline h-4 w-4" />
             {alarms === "All plant systems nominal." ? event : alarms}
           </span>
-          <Button
-            size="sm"
-            disabled={!busEAvailable}
-            className="min-h-11 bg-red-700 hover:bg-red-600"
-            onClick={() => scram(true)}
-          >
-            <ShieldAlert className="mr-2 h-4 w-4" />
-            SCRAM
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" disabled={!busEAvailable} className="min-h-11 bg-red-700 hover:bg-red-600" onClick={() => scram(true)}>
+              <ShieldAlert className="mr-2 h-4 w-4" />SCRAM
+            </Button>
+            <Button size="sm" variant="outline" disabled={!busEAvailable} className="min-h-11" onClick={reset}>
+              <RotateCcw className="mr-2 h-4 w-4" />RESET
+            </Button>
+          </div>
         </section>
         <nav
           aria-label="Simulator panels"
@@ -4408,6 +4391,42 @@ export default function ReactorSimulator() {
           {content}
         </div>
       </main>
+      {joinDialogOpen && <div className="fixed inset-0 z-[120] grid place-items-center bg-black/75 p-4" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setJoinDialogOpen(false); }}>
+        <form className="w-full max-w-xl space-y-4 rounded-xl border border-cyan-400/50 bg-slate-900 p-5 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="join-station-title" onSubmit={event => {
+          event.preventDefault();
+          let code = joinInviteCode.trim();
+          let unit = joinUnitNumber;
+          let station = joinStationId.trim();
+          let localInvite = false;
+          if (code.startsWith("http://") || code.startsWith("https://") || code.startsWith("/")) {
+            try {
+              const invite = new URL(code, window.location.origin);
+              code = invite.searchParams.get("plant") || "";
+              unit = Number(invite.searchParams.get("unit")) === 1 ? 1 : 2;
+              station = invite.searchParams.get("station") || station;
+              localInvite = invite.searchParams.get("local") === "1";
+            } catch { setEvent("INVITE FORMAT INVALID — enter a plant room code or full station invite URL."); return; }
+          }
+          const assignment = normalizeAssignment({ roomCode: code, unitNumber: unit, stationId: station });
+          if (!assignment || getUnitStation(assignment.stationId).role === "observer") {
+            setEvent("JOIN FAILED — check the room code, unit number, and station/panel ID.");
+            return;
+          }
+          if (localInvite) setPlantTransport("local");
+          savePlantAssignment(assignment);
+          const target = new URL("/reactor", window.location.origin);
+          target.searchParams.set("plant", assignment.roomCode);
+          target.searchParams.set("unit", String(assignment.unitNumber));
+          target.searchParams.set("station", assignment.stationId);
+          if (localInvite || getPlantTransport() === "local") target.searchParams.set("local", "1");
+          window.location.assign(target.href);
+        }}>
+          <div><p className="text-xs font-black tracking-[.24em] text-cyan-300">PLANT NETWORK</p><h2 id="join-station-title" className="mt-1 text-xl font-black">Join a unit or panel station</h2><p className="mt-2 text-sm text-slate-300">Enter a plant invite/room code, then choose the unit and station ID. You can also paste a full invite URL.</p></div>
+          <label className="block text-sm font-bold text-slate-200">INVITE CODE / ROOM CODE<input autoFocus value={joinInviteCode} onChange={event => setJoinInviteCode(event.target.value)} placeholder="UNIT2-PLANT or paste an invite link" className="mt-1 w-full rounded border border-slate-600 bg-black px-3 py-2 font-mono text-cyan-100" /></label>
+          <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold text-slate-200">UNIT<select value={joinUnitNumber} onChange={event => { const unit = Number(event.target.value) === 1 ? 1 : 2; setJoinUnitNumber(unit); setJoinStationId(`U${unit}-UNIT`); }} className="mt-1 w-full rounded border border-slate-600 bg-black px-3 py-2 text-cyan-100"><option value={1}>Unit 1</option><option value={2}>Unit 2</option></select></label><label className="text-sm font-bold text-slate-200">PANEL / STATION ID<input value={joinStationId} onChange={event => setJoinStationId(event.target.value.toUpperCase())} placeholder="U2-UNIT, U2-TCR, U2-DA…" className="mt-1 w-full rounded border border-slate-600 bg-black px-3 py-2 font-mono text-cyan-100" /></label></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setJoinDialogOpen(false)}>CANCEL</Button><Button type="submit" className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">JOIN STATION</Button></div>
+        </form>
+      </div>}
       {tutorialEnabled && <TutorialCoach progress={{ level: tutorialLevel, objectiveMet: tutorialObjectiveMet, aprmHeld: tutorialAprmHold }} onAdvance={advanceTutorial} onExit={() => { setTutorialEnabled(false); setEvent("ADVANCED MODE ENABLED — tutorial exited."); }} />}
     </div>
   );

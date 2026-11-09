@@ -95,6 +95,21 @@ type LocalPlantData = {
 };
 const localEnabled = () => typeof window !== "undefined" && localStorage.getItem(PLANT_TRANSPORT_KEY) === "local";
 export const getPlantTransport = (): PlantTransport => localEnabled() ? "local" : "supabase";
+export const checkPlantConnection = async (): Promise<boolean> => {
+  if (localEnabled()) return true;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+  if (!supabase) return false;
+  try {
+    const { error } = await withSupabaseTimeout(
+      supabase.from("plant_rooms").select("code").limit(1),
+      "Supabase connectivity check",
+      5_000,
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+};
 export const setPlantTransport = (transport: PlantTransport) => {
   if (typeof window === "undefined") return;
   localStorage.setItem(PLANT_TRANSPORT_KEY, transport);

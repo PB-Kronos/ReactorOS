@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Link2, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, Link2, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   PlantSnapshot,
@@ -7,6 +7,7 @@ import {
   type PlantPhoneCallMessage,
   type PlantPhoneMessage,
   acknowledgePlantPhoneMessage,
+  checkPlantConnection,
   createPlantPhoneCall,
   createStationId,
   getPlantRemoteCommands,
@@ -38,6 +39,8 @@ export default function Supervisor() {
   const [connectedRoomCode, setConnectedRoomCode] = useState(stored?.roomCode || "UNIT2-PLANT");
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const [transport, setTransportState] = useState(() => getPlantTransport());
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
+  const [checkingSupabase, setCheckingSupabase] = useState(false);
   const [snapshot, setSnapshot] = useState<PlantSnapshot>({ room: null, units: [] });
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
@@ -118,6 +121,22 @@ export default function Supervisor() {
     })();
     return () => { active = false; channel?.unsubscribe(); if (poll) window.clearInterval(poll); };
   }, [connectedRoomCode, connectionEpoch]);
+  useEffect(() => {
+    if (transport === "local") { setSupabaseConnected(false); setCheckingSupabase(false); return; }
+    let active = true;
+    const check = async () => {
+      if (!navigator.onLine) { setSupabaseConnected(false); setCheckingSupabase(false); return; }
+      setCheckingSupabase(true);
+      const connected = await checkPlantConnection();
+      if (active) { setSupabaseConnected(connected); setCheckingSupabase(false); }
+    };
+    const offline = () => { setSupabaseConnected(false); setCheckingSupabase(false); };
+    void check();
+    const timer = window.setInterval(() => void check(), 15_000);
+    window.addEventListener("online", check);
+    window.addEventListener("offline", offline);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener("online", check); window.removeEventListener("offline", offline); };
+  }, [transport]);
   useEffect(() => {
     if (!connectedRoomCode) return;
     let active = true;
@@ -215,7 +234,14 @@ export default function Supervisor() {
     const local = transport === "local" ? "&local=1" : "";
     return `${window.location.origin}/reactor?plant=${encodeURIComponent(roomCode)}&unit=${unit}&station=${station}${local}`;
   };
-  const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); } catch { window.prompt("Copy this invite link", text); } };
+  const openInvite = (invite: string) => {
+    if (transport === "supabase" && !supabaseConnected) {
+      setError("Supabase is offline or unreachable. Connect to the internet and wait for the connection check before opening a shared station.");
+      return;
+    }
+    const opened = window.open(invite, "_blank");
+    if (!opened) setError("Could not open the station. Allow pop-ups for ReactorOS and try again.");
+  };
   const sendSupervisorChat = async () => {
     const endpoint = getPhoneEndpoint(chatExtension);
     const body = chatMessage.trim();
@@ -415,22 +441,22 @@ export default function Supervisor() {
         <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => {
           const next = transport === "local" ? "supabase" : "local";
           setPlantTransport(next); setTransportState(next); setConnectionEpoch(current => current + 1);
-        }}>{transport === "local" ? "LOCAL / OFFLINE" : "SUPABASE / ONLINE"}</Button></div>
+        }}>{transport === "local" ? "LOCAL / OFFLINE" : checkingSupabase ? "SUPABASE / CHECKING…" : supabaseConnected ? "SUPABASE / CONNECTED" : "SUPABASE / OFFLINE"}</Button></div>
       </header>
       <div className="grid gap-4 rounded-xl border border-violet-400/30 bg-slate-900/70 p-4 md:grid-cols-[1fr_auto]">
         <label className="text-sm font-bold">PLANT ROOM CODE<input value={roomCode} onChange={event => setRoomCode(normaliseRoom(event.target.value))} className="mt-2 block w-full rounded border border-slate-600 bg-slate-950 px-3 py-2 text-cyan-200" /></label>
         <Button className="self-end bg-violet-500 text-slate-950 hover:bg-violet-400" disabled={connecting} onClick={() => { const next = normaliseRoom(roomCode); if (next.length < 3) { setError("Use a room code with at least three characters."); return; } dispatchDirty.current = false; setConnecting(true); setConnectedRoomCode(next); setConnectionEpoch(current => current + 1); }}><RefreshCw className="mr-2 h-4 w-4"/>{connecting ? "CONNECTING" : "CONNECT"}</Button>
       </div>
       {error && <p className="rounded border border-red-500/60 bg-red-950/30 p-3 text-sm text-red-200">{error}</p>}
-      <p className="text-xs font-bold tracking-wider text-emerald-300">● {transport === "local" ? "BROWSER-LOCAL PLANT · no network required" : "LIVE ROOM TELEMETRY · Supabase connected"}</p>
+      <p className={`text-xs font-bold tracking-wider ${transport === "local" || supabaseConnected ? "text-emerald-300" : "text-amber-300"}`}>● {transport === "local" ? "BROWSER-LOCAL PLANT · no network required" : checkingSupabase ? "CHECKING INTERNET AND SUPABASE…" : supabaseConnected ? "LIVE ROOM TELEMETRY · SUPABASE CONNECTED" : "SUPABASE OFFLINE · check internet or database access"}</p>
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-xl border border-cyan-400/30 bg-slate-900/70 p-4"><p className="text-xs tracking-widest text-slate-400">PLANT DEMAND</p><strong className="mt-2 block text-4xl text-cyan-200">{plantDemand.toFixed(0)} <small className="text-base">MW</small></strong><p className="mt-2 text-xs text-slate-400">Assigned: {assignedTotal.toFixed(0)} MW</p></article>
         <article className="rounded-xl border border-emerald-400/30 bg-slate-900/70 p-4"><p className="text-xs tracking-widest text-slate-400">COMBINED OUTPUT</p><strong className="mt-2 block text-4xl text-emerald-200">{totalOutput.toFixed(1)} <small className="text-base">MW</small></strong><p className={`mt-2 text-xs ${Math.abs(plantDifference) <= 10 ? "text-emerald-300" : "text-amber-300"}`}>{plantDifference >= 0 ? "+" : ""}{plantDifference.toFixed(1)} MW vs plant demand</p></article>
         <article className="rounded-xl border border-amber-400/30 bg-slate-900/70 p-4"><p className="text-xs tracking-widest text-slate-400">UNIT INTERLOCK</p><strong className={`mt-2 block text-xl ${snapshot.room?.interlock_enabled ? "text-emerald-300" : "text-slate-400"}`}>{snapshot.room?.interlock_enabled ? `ENABLED · U${snapshot.room.interlock_source_unit} → U${snapshot.room.interlock_target_unit}` : "INDEPENDENT"}</strong><p className="mt-2 text-xs text-slate-400">Feeds the target's Bus A from a powered source Bus A and blocks its startup transformer.</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" onClick={() => void updatePlantDispatch(roomCode, { interlock_enabled: !snapshot.room?.interlock_enabled })}>{snapshot.room?.interlock_enabled ? "DISABLE" : "ENABLE"}</Button><Button variant="outline" onClick={() => void updatePlantDispatch(roomCode, { interlock_source_unit: 1, interlock_target_unit: 2 })}>U1 → U2</Button><Button variant="outline" onClick={() => void updatePlantDispatch(roomCode, { interlock_source_unit: 2, interlock_target_unit: 1 })}>U2 → U1</Button></div></article>
       </section>
       <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4"><div className="mb-4 flex items-center gap-2"><SlidersHorizontal className="h-5 w-5 text-violet-300"/><h2 className="font-black">Demand manager</h2></div><p className={`mb-4 text-sm ${demandPlanningOpen ? "text-emerald-300" : "text-slate-400"}`}>CURRENT SITE DEMAND: {plantDemand.toFixed(0)} MW · NEXT: {nextDemand.toFixed(0)} MW IN {secondsToDemand}s · {demandPlanningOpen ? "DISTRIBUTION WINDOW OPEN" : "Distribution opens at T−200 and closes at T−60."}</p><div className="grid gap-4 md:grid-cols-3"><label>Required dispatch total MW<input type="number" value={dispatchTarget} disabled className="mt-2 block w-full rounded bg-slate-950 p-2 text-slate-400" /></label>{([1, 2] as const).map(unit => <label key={unit}>Unit {unit} demand MW<input type="number" min="0" max="1200" disabled={!demandPlanningOpen} value={unitDemand[unit]} onChange={event => { dispatchDirty.current = true; setUnitDemand(current => ({ ...current, [unit]: Number(event.target.value) || 0 })); }} className="mt-2 block w-full rounded bg-slate-950 p-2 disabled:cursor-not-allowed disabled:text-slate-500" /></label>)}</div><p className={`mt-3 text-xs ${Math.abs(assignedTotal - dispatchTarget) <= .01 ? "text-emerald-300" : "text-amber-300"}`}>ASSIGNED: {assignedTotal.toFixed(0)} / {dispatchTarget.toFixed(0)} MW {Math.abs(assignedTotal - dispatchTarget) <= .01 ? "· COMPLETE" : "· NO DEMAND MAY BE LEFT UNASSIGNED"}</p><div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" disabled={!demandPlanningOpen} onClick={balance}>SPLIT EVENLY</Button><Button className="bg-violet-500 text-slate-950 hover:bg-violet-400" disabled={!demandPlanningOpen} onClick={() => void applyDispatch()}>APPLY DISPATCH</Button></div></section>
-      <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4"><div className="mb-4 flex items-center gap-2"><Link2 className="h-5 w-5 text-cyan-300"/><h2 className="font-black">Unit station invites</h2></div><div className="grid gap-3 md:grid-cols-2">{([1, 2] as const).map(unit => { const row = unitState(snapshot, unit); const invite = createInvite(unit); return <article key={unit} className="rounded border border-slate-700 bg-slate-950 p-3"><div className="flex items-center justify-between"><strong>UNIT {unit}</strong><span className={row?.offsite_available === false ? "text-red-300" : "text-emerald-300"}>{row?.offsite_available === false ? "OFFSITE LOST" : "AVAILABLE"}</span></div><p className="mt-2 text-sm text-slate-300">{Number(row?.output_mw || 0).toFixed(1)} MW output · {Number(row?.assigned_demand_mw || 0).toFixed(0)} MW assigned</p><div className="mt-3 grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => void copy(invite)}><Copy className="mr-2 h-4 w-4"/>COPY INVITE</Button></div></article>; })}</div></section>
-      <section className="rounded-xl border border-violet-400/35 bg-slate-900/70 p-4"><div className="mb-2"><p className="text-xs font-black tracking-[.22em] text-violet-300">UNIT 2 STATION ASSIGNMENT</p><h2 className="text-lg font-black">Dedicated operator stations</h2></div><p className="mb-4 text-sm text-slate-300">Each link occupies one named station. MCR retains full access; every other station is limited to its assigned panel group and uses its own telephone extension.</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{U2_STATIONS.filter(station => station.role !== "unit").map(station => { const invite = createInvite(2, station.stationId); return <article key={station.stationId} className="rounded border border-violet-500/25 bg-slate-950/80 p-3"><p className="text-xs font-black text-violet-200">{station.extension} · {station.label}</p><p className="mt-1 text-[11px] text-slate-400">{station.panels.map(panel => panel.replace("-", " ")).join(" · ")}</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" className="flex-1" onClick={() => void copy(invite)}>COPY</Button></div></article>; })}</div></section>
+      <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4"><div className="mb-4 flex items-center gap-2"><Link2 className="h-5 w-5 text-cyan-300"/><h2 className="font-black">Unit station invites</h2></div><div className="grid gap-3 md:grid-cols-2">{([1, 2] as const).map(unit => { const row = unitState(snapshot, unit); const invite = createInvite(unit); return <article key={unit} className="rounded border border-slate-700 bg-slate-950 p-3"><div className="flex items-center justify-between"><strong>UNIT {unit}</strong><span className={row?.offsite_available === false ? "text-red-300" : "text-emerald-300"}>{row?.offsite_available === false ? "OFFSITE LOST" : "AVAILABLE"}</span></div><p className="mt-2 text-sm text-slate-300">{Number(row?.output_mw || 0).toFixed(1)} MW output · {Number(row?.assigned_demand_mw || 0).toFixed(0)} MW assigned</p><div className="mt-3 grid gap-2 sm:grid-cols-[auto_1fr]"><Button variant="outline" onClick={() => openInvite(invite)}><ExternalLink className="mr-2 h-4 w-4"/>OPEN UNIT {unit}</Button><input readOnly aria-label={`Unit ${unit} invite link`} value={invite} onFocus={event => event.currentTarget.select()} className="min-w-0 rounded border border-slate-700 bg-black px-2 py-2 font-mono text-xs text-cyan-200" /></div></article>; })}</div></section>
+      <section className="rounded-xl border border-violet-400/35 bg-slate-900/70 p-4"><div className="mb-2"><p className="text-xs font-black tracking-[.22em] text-violet-300">UNIT 2 STATION ASSIGNMENT</p><h2 className="text-lg font-black">Dedicated operator stations</h2></div><p className="mb-4 text-sm text-slate-300">Each link occupies one named station. MCR retains full access; every other station is limited to its assigned panel group and uses its own telephone extension.</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{U2_STATIONS.filter(station => station.role !== "unit").map(station => { const invite = createInvite(2, station.stationId); return <article key={station.stationId} className="rounded border border-violet-500/25 bg-slate-950/80 p-3"><p className="text-xs font-black text-violet-200">{station.extension} · {station.label}</p><p className="mt-1 text-[11px] text-slate-400">{station.panels.map(panel => panel.replace("-", " ")).join(" · ")}</p><div className="mt-3 grid gap-2 sm:grid-cols-[auto_1fr]"><Button size="sm" variant="outline" onClick={() => openInvite(invite)}><ExternalLink className="mr-2 h-4 w-4"/>OPEN</Button><input readOnly aria-label={`${station.label} invite link`} value={invite} onFocus={event => event.currentTarget.select()} className="min-w-0 rounded border border-slate-700 bg-black px-2 py-1 font-mono text-[10px] text-violet-200" /></div></article>; })}</div></section>
       <section className="rounded-xl border border-emerald-400/35 bg-black p-4 shadow-inner">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-black tracking-[.24em] text-emerald-400">SUPERVISOR COMMAND TERMINAL</p><h2 className="text-lg font-black text-emerald-100">Plant dispatch & remote unit CLI</h2></div><span className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-emerald-300">REMOTE UNIT {terminalUnit}</span></div>
         <pre ref={terminalOutputRef} className="h-64 overflow-y-auto whitespace-pre-wrap border border-emerald-900/70 bg-[#020b07] p-3 text-sm leading-relaxed text-emerald-200">{terminalHistory.join("\n\n")}</pre>

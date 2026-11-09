@@ -34,7 +34,7 @@ printf '#!/bin/sh\nexit 101\n' > "$target/usr/sbin/policy-rc.d"
 chmod +x "$target/usr/sbin/policy-rc.d"
 chroot "$target" apt-get update
 DEBIAN_FRONTEND=noninteractive chroot "$target" apt-get install -y --no-install-recommends \
-    linux-image-amd64 grub-pc e2fsprogs systemd-sysv systemd-resolved dbus-x11 sudo iproute2 \
+    linux-image-amd64 grub-pc e2fsprogs systemd-sysv systemd-resolved dbus-user-session sudo iproute2 \
     lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-vmware \
     openbox firefox-esr fonts-dejavu-core python3 python3-tk thunar mousepad ristretto xterm polkitd pkexec gparted \
     pipewire-audio wireplumber

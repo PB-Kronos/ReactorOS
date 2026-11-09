@@ -28,7 +28,7 @@ mkdir -p config/package-lists
 printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \
     lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
     firmware-amd-graphics libgl1-mesa-dri polkitd pkexec gparted \
-    dbus-x11 openbox firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
+    dbus-user-session openbox firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
     thunar mousepad ristretto xterm pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils \
     network-manager network-manager-gnome wpasupplicant pavucontrol arandr x11-xserver-utils lxpolkit \
     debian-installer-launcher \

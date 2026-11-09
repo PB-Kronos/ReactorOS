@@ -3,6 +3,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import json
 import hmac
+import importlib.util
 import math
 import os
 import sqlite3
@@ -23,6 +24,15 @@ DESKTOP_APPS = {
     "images": ["ristretto"],
     "browser": ["firefox-esr", "--no-remote"],
 }
+UPDATER = Path("/usr/local/sbin/reactoros-update")
+UPDATE_RESULT = Path("/run/reactoros-update-result")
+
+
+def updater_configured():
+    return UPDATER.is_file() and all(
+        (Path("/etc/reactoros") / name).is_file()
+        for name in ("update-repo", "update-public.pem")
+    )
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -89,15 +99,34 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"started": "terminal"}, 202)
         if self.path == "/api/desktop/launch" and debian_session():
             app = data.get("app")
-            if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users"):
+            if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users", "users-cli", "update"):
                 return self.send_json({"error": "Unknown desktop application"}, 400)
-            permission = "users:manage" if app == "users" else f"app:{app}"
-            if not permitted(permission):
+            privileged = app in ("users", "users-cli", "update")
+            allowed = (current_access()["sudoGroup"] if app == "update" else
+                       permitted("users:manage" if privileged else f"app:{app}"))
+            if not allowed or (privileged and not self.kiosk_request(origin)):
                 return self.send_json({"error": "Permission denied"}, 403)
-            command = (
-                ["xterm", "-T", "ReactorOS User Manager", "-e", "sudo", "/usr/bin/python3", str(ROOT / "manage-users.py")]
-                if app == "users" else DESKTOP_APPS[app].copy()
-            )
+            if app == "update":
+                if not updater_configured():
+                    return self.send_json({"error": "Set up the signed updater before updating."}, 409)
+                maintenance = (
+                    'echo "Update started" > /run/reactoros-update-result; '
+                    "trap 'systemctl start lightdm' EXIT; "
+                    "systemctl stop lightdm && /usr/local/sbin/reactoros-update "
+                    ">> /run/reactoros-update-result 2>&1"
+                )
+                command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",
+                           "/usr/bin/systemd-run", "--unit=reactoros-kiosk-update", "--collect",
+                           "/bin/bash", "-c", maintenance]
+            elif privileged:
+                command = ["xterm", "-T", "ReactorOS User Manager", "-e", "sudo",
+                           "--preserve-env=DISPLAY,XAUTHORITY", "/usr/bin/python3", str(ROOT / "manage-users.py")]
+                if app == "users":
+                    if importlib.util.find_spec("tkinter") is None:
+                        return self.send_json({"error": "Install the GUI dependency with sudo apt-get install python3-tk."}, 503)
+                    command.append("--gui")
+            else:
+                command = DESKTOP_APPS[app].copy()
             if app == "browser":
                 profile = DB.parent / "internet"
                 profile.mkdir(exist_ok=True)
@@ -154,6 +183,16 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_json({"error": "Unknown plant request"}, 404)
 
     def do_GET(self):
+        if self.path == "/api/desktop/update" and debian_session():
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            if not self.kiosk_request(origin, require_origin=False):
+                return self.send_json({"error": "Permission denied"}, 403)
+            version = ROOT / "VERSION"
+            return self.send_json({
+                "version": version.read_text().strip() if version.is_file() else "Live image",
+                "configured": updater_configured(),
+                "result": UPDATE_RESULT.read_text(errors="replace")[-3000:] if UPDATE_RESULT.is_file() else "",
+            })
         if self.path == "/api/desktop/fullscreen-key":
             origin = f"http://127.0.0.1:{self.server.server_port}"
             key_file = os.environ.get("REACTOROS_FULLSCREEN_KEY")

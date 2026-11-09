@@ -22,9 +22,9 @@ command -v curl >/dev/null || { echo 'Install curl with sudo apt-get install cur
 test -f /opt/reactoros/kiosk-session.sh || { echo 'Install the ReactorOS kiosk first.' >&2; exit 1; }
 
 # Older kiosk installs may lack the native terminal or the audio service.
-if ! command -v xterm >/dev/null || ! command -v wireplumber >/dev/null || ! command -v pipewire-pulse >/dev/null; then
+if ! command -v xterm >/dev/null || ! command -v wireplumber >/dev/null || ! command -v pipewire-pulse >/dev/null || ! python3 -c 'import tkinter' 2>/dev/null; then
     apt-get update
-    apt-get install -y --no-install-recommends xterm pipewire-audio wireplumber
+    apt-get install -y --no-install-recommends xterm pipewire-audio wireplumber python3-tk
 fi
 
 install -d -m 0755 /etc/reactoros

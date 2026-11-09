@@ -23,7 +23,7 @@ lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid
 mkdir -p config/package-lists
 printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \
     lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
-    dbus-x11 openbox firefox-esr fonts-dejavu-core python3 iproute2 procps \
+    dbus-x11 openbox firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
     thunar mousepad ristretto xterm pipewire-audio wireplumber curl ca-certificates openssl \
     > config/package-lists/reactoros.list.chroot
 
@@ -31,6 +31,8 @@ overlay=config/includes.chroot
 app="$overlay/opt/reactoros"
 mkdir -p "$app/rbwr" "$overlay/usr/share/xsessions" "$overlay/etc/lightdm/lightdm.conf.d" "$overlay/usr/local/sbin"
 install -m 0755 "$lab/reactoros-update.sh" "$overlay/usr/local/sbin/reactoros-update"
+install -D -m 0644 "$lab/release-signing.pub" "$overlay/etc/reactoros/update-public.pem"
+printf '%s\n' 'PB-Kronos/ReactorOS' > "$overlay/etc/reactoros/update-repo"
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" "$root/workstation_access.py" "$app/"
 cp -r "$root/rbwr/dist" "$app/rbwr/"
 cp "$lab/manage-users.py" "$app/"

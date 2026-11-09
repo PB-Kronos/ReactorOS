@@ -91,7 +91,7 @@ function WorkstationTerminal() {
     if (route) {
       if (!window.open(route)) return "App could not open. Try the Start menu.";
     } else {
-      await workstationRequest("/api/desktop/launch", { app: name });
+      await workstationRequest("/api/desktop/launch", { app: name }, sessionStorage.getItem("reactoros-terminal-token") || undefined);
     }
     return `Opened ${name}.`;
   }

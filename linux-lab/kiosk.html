@@ -7,7 +7,7 @@
   * { box-sizing: border-box }
   :root { --ui: 1; --icons: 1; --text: 1; --control: calc(23px * var(--ui) * var(--icons));
     --title: calc(var(--control) + 8px); --taskbar: max(calc(var(--control) + 9px), calc(34px * var(--ui) * var(--text))) }
-  body { margin: 0; background: teal; font: calc(14px * var(--ui) * var(--text)) Tahoma, sans-serif }
+  body { margin: 0; background: var(--desktop-color, teal); font: calc(14px * var(--ui) * var(--text)) Tahoma, sans-serif }
   button { background: silver; border: 2px outset white; padding: calc(5px * var(--ui)) calc(9px * var(--ui)); font: inherit }
   button:active { border-style: inset }
   #desktop { position: fixed; inset: 0 0 var(--taskbar); padding: calc(18px * var(--ui)); isolation: isolate }
@@ -50,12 +50,25 @@
 <div id="layer-menu" role="group" aria-label="Window layering" hidden></div>
 <footer><button id="start" aria-expanded="false"><span class="start-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Start</b></button><span id="tasks"></span><span id="identity">Reading Debian session…</span></footer>
 <dialog id="display" aria-labelledby="display-heading">
-  <h2 id="display-heading">Display Settings</h2>
+  <h2 id="display-heading">Settings</h2>
+  <fieldset><legend>Appearance</legend>
   <label>UI scale <input type="range" name="ui" min="75" max="175" step="5"><output></output></label>
   <label>Text size <input type="range" name="text" min="85" max="175" step="5"><output></output></label>
   <label>Desktop icons <input type="range" name="icons" min="75" max="175" step="5"><output></output></label>
-  <p>Settings are saved for this Debian account. Press F11 to enter or leave app fullscreen.</p>
-  <button id="display-reset">Reset</button> <form method="dialog" style="display:inline"><button>Done</button></form>
+  <label>Desktop colour <select id="desktop-color"><option value="teal">Classic teal</option><option value="#315577">Slate blue</option><option value="#303030">Charcoal</option></select></label>
+  <button id="display-reset">Reset appearance</button>
+  </fieldset>
+  <fieldset id="accounts-settings" hidden><legend>Accounts</legend>
+    <button id="manage-users">User Manager</button>
+    <button id="manage-users-cli">Legacy user management</button>
+  </fieldset>
+  <fieldset><legend>Software Update</legend>
+    <p id="update-status" role="status"></p>
+    <button id="install-update" disabled>Install latest signed update</button>
+    <details id="update-result" hidden><summary>Last update</summary><pre style="white-space:pre-wrap"></pre></details>
+  </fieldset>
+  <p>Appearance is saved for this Debian account. F11 toggles app fullscreen.</p>
+  <form method="dialog"><button>Done</button></form>
 </dialog>
 <script type="module">
   if (location.hash) {
@@ -77,7 +90,12 @@
   const layerMenu = document.querySelector("#layer-menu");
   const windows = new Map();
   const displayInputs = [...display.querySelectorAll("input")];
-  let settings = { ui: 100, text: 100, icons: 100 };
+  const defaultSettings = { ui: 100, text: 100, icons: 100, color: "teal" };
+  const desktopColor = document.querySelector("#desktop-color");
+  const installUpdate = document.querySelector("#install-update");
+  const updateStatus = document.querySelector("#update-status");
+  const updateResult = document.querySelector("#update-result");
+  let settings = { ...defaultSettings };
   let settingsKey;
   let fullscreenWindow;
   let topLayer = 0;
@@ -100,6 +118,8 @@
     if (frame.src.includes("/plant-tools.html")) doc.body.style.fontSize = 14 * settings.text / 100 + "px";
   }
   function applySettings() {
+    document.documentElement.style.setProperty("--desktop-color", settings.color);
+    desktopColor.value = settings.color;
     for (const input of displayInputs) {
       const value = settings[input.name];
       document.documentElement.style.setProperty("--" + input.name, value / 100);
@@ -110,13 +130,18 @@
       try { scaleFrame(win.frame); } catch {}
     }
   }
+  desktopColor.onchange = () => {
+    settings.color = desktopColor.value;
+    applySettings();
+    localStorage.setItem(settingsKey, JSON.stringify(settings));
+  };
   for (const input of displayInputs) input.oninput = () => {
     settings[input.name] = Number(input.value);
     applySettings();
     localStorage.setItem(settingsKey, JSON.stringify(settings));
   };
   document.querySelector("#display-reset").onclick = () => {
-    settings = { ui: 100, text: 100, icons: 100 };
+    settings = { ...defaultSettings };
     localStorage.removeItem(settingsKey);
     applySettings();
   };
@@ -184,6 +209,31 @@
     element.textContent = label;
     element.onclick = action;
     return element;
+  }
+  function sessionHeaders() {
+    return { "X-ReactorOS-Session": sessionStorage.getItem("reactoros-terminal-token") || "" };
+  }
+  async function launchDesktop(app) {
+    const reply = await fetch("/api/desktop/launch", {
+      method: "POST", headers: { ...sessionHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ app }),
+    });
+    if (!reply.ok) throw new Error((await reply.json()).error);
+  }
+  async function showSettings(sudoGroup) {
+    showMenu(false);
+    display.showModal();
+    installUpdate.disabled = true;
+    updateStatus.textContent = "Reading updater status…";
+    try {
+      const reply = await fetch("/api/desktop/update", { headers: sessionHeaders(), cache: "no-store" });
+      if (!reply.ok) throw new Error("Updater status unavailable.");
+      const info = await reply.json();
+      updateStatus.textContent = info.version + (info.configured ? "" : " · Signed updater setup required.");
+      installUpdate.disabled = !sudoGroup || !info.configured;
+      updateResult.hidden = !info.result;
+      updateResult.querySelector("pre").textContent = info.result;
+    } catch (error) { updateStatus.textContent = error.message; }
   }
   function showMenu(open) {
     layerMenu.hidden = true;
@@ -292,7 +342,7 @@
   try {
     const response = await fetch("/api/operator", { cache: "no-store" });
     if (!response.ok) throw new Error("Debian session unavailable");
-    const { name, permissions } = await response.json();
+    const { name, permissions, sudoGroup } = await response.json();
     if (typeof name !== "string" || !name) throw new Error("Debian account unavailable");
     sessionStorage.setItem("reactoros-debian-operator", name);
     sessionStorage.setItem("reactoros-permissions", JSON.stringify(permissions));
@@ -301,6 +351,7 @@
     settingsKey = "reactoros-display:" + name;
     try {
       const saved = JSON.parse(localStorage.getItem(settingsKey));
+      if ([...desktopColor.options].some(option => option.value === saved?.color)) settings.color = saved.color;
       for (const input of displayInputs) {
         const value = saved?.[input.name];
         if (Number.isFinite(value) && value >= Number(input.min) && value <= Number(input.max)) settings[input.name] = value;
@@ -320,17 +371,13 @@
       menu.append(button(title, () => openProgram(route)));
     }
     for (const [app, title] of Object.entries({
-      files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet", users: "User Manager",
+      files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet",
     })) {
-      if (!permissions.includes(app === "users" ? "users:manage" : "app:" + app)) continue;
+      if (!permissions.includes("app:" + app)) continue;
       menu.append(button(title, async () => {
         showMenu(false);
         try {
-          const reply = await fetch("/api/desktop/launch", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ app }),
-          });
-          if (!reply.ok) throw new Error((await reply.json()).error);
+          await launchDesktop(app);
         } catch (error) {
           alert(`Could not open ${title}: ${error.message}`);
         }
@@ -339,7 +386,19 @@
     for (const route of ["/reactor", "/"]) {
       if (programs.has(route)) desktop.append(button(programs.get(route), () => openProgram(route)));
     }
-    menu.append(button("Display Settings", () => { showMenu(false); display.showModal(); }));
+    document.querySelector("#accounts-settings").hidden = !permissions.includes("users:manage");
+    for (const [id, app] of [["manage-users", "users"], ["manage-users-cli", "users-cli"]]) {
+      document.querySelector("#" + id).onclick = async () => {
+        try { await launchDesktop(app); display.close(); }
+        catch (error) { alert(error.message); }
+      };
+    }
+    installUpdate.onclick = async () => {
+      if (!confirm("Save your work before updating. The kiosk will close and return when the update finishes.")) return;
+      try { await launchDesktop("update"); display.close(); }
+      catch (error) { updateStatus.textContent = error.message; }
+    };
+    menu.append(button("Settings", () => showSettings(sudoGroup)));
     start.onclick = () => showMenu(menu.hidden);
     start.disabled = false;
     void listenForKioskFullscreenKey();

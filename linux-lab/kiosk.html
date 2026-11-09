@@ -19,6 +19,7 @@
   #menu { position: fixed; z-index: 20; bottom: var(--taskbar); left: 2px; background: silver;
     border: 2px outset white; padding: 6px; width: min(100vw, calc(245px * var(--ui) * var(--text))); max-height: calc(100vh - var(--taskbar)); overflow: auto }
   #menu button { width: 100%; text-align: left; margin: 1px 0 }
+  #device-controls { display: flex; flex-wrap: wrap; gap: 6px }
   #layer-menu { position: fixed; z-index: 21; background: silver; border: 2px outset white; padding: 4px }
   #layer-menu button { display: block; width: 100%; text-align: left }
   .window { position: absolute; left: 16px; top: 16px; width: calc(100% - 70px);
@@ -41,7 +42,7 @@
   .window.fullscreen { z-index: 2147483647 !important }
   .window.fullscreen, .window.fullscreen iframe { border: 0 }
   .window.fullscreen iframe { height: 100% }
-  dialog { max-width: min(90vw, 34em); background: silver; border: 3px outset white; font: inherit }
+  dialog { max-width: min(90vw, 42em); max-height: 90vh; overflow: auto; background: silver; border: 3px outset white; font: inherit }
   dialog label { display: grid; grid-template-columns: 8em 1fr 3em; gap: .5em; align-items: center; margin: .75em 0 }
   [hidden] { display: none !important }
 </style>
@@ -60,7 +61,18 @@
   </fieldset>
   <fieldset id="accounts-settings" hidden><legend>Accounts</legend>
     <button id="manage-users">User Manager</button>
-    <button id="manage-users-cli">Legacy user management</button>
+  </fieldset>
+  <fieldset id="device-settings"><legend>Devices</legend>
+    <p>Manage sound, network connections and display layout from this settings window.</p>
+    <div id="device-controls"></div>
+    <p id="audio-status" role="status">Audio status has not been checked.</p>
+    <button id="check-audio">Check audio</button>
+    <button id="restart-audio">Restart audio services</button>
+    <p id="audio-help">If sound is silent, check that the correct output device and port are selected in Sound Settings.</p>
+  </fieldset>
+  <fieldset id="storage-settings" hidden><legend>Storage</legend>
+    <p>Manage disks and partitions. Debian may request administrator authentication.</p>
+    <button id="manage-disks">Disk Management</button>
   </fieldset>
   <fieldset><legend>Software Update</legend>
     <p id="update-status" role="status"></p>
@@ -95,6 +107,7 @@
   const installUpdate = document.querySelector("#install-update");
   const updateStatus = document.querySelector("#update-status");
   const updateResult = document.querySelector("#update-result");
+  const audioStatus = document.querySelector("#audio-status");
   let settings = { ...defaultSettings };
   let settingsKey;
   let fullscreenWindow;
@@ -235,9 +248,19 @@
     });
     if (!reply.ok) throw new Error((await reply.json()).error);
   }
+  async function refreshAudio() {
+    audioStatus.textContent = "Checking audio devices…";
+    try {
+      const reply = await fetch("/api/desktop/audio", { headers: sessionHeaders(), cache: "no-store" });
+      const info = await reply.json();
+      if (!reply.ok) throw new Error(info.error || "Audio status unavailable.");
+      audioStatus.textContent = info.summary;
+    } catch (error) { audioStatus.textContent = error.message; }
+  }
   async function showSettings(sudoGroup) {
     showMenu(false);
     display.showModal();
+    void refreshAudio();
     installUpdate.disabled = true;
     updateStatus.textContent = "Reading updater status…";
     try {
@@ -392,8 +415,6 @@
     }
     for (const [app, title] of Object.entries({
       files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet",
-      "disk-management": "Disk Management", network: "Network Manager",
-      "audio-settings": "Sound Settings", "display-settings": "Display Arrangement",
     })) {
       if (!permissions.includes("app:" + app)) continue;
       menu.append(button(title, async () => {
@@ -409,12 +430,40 @@
       if (programs.has(route)) desktop.append(button(programs.get(route), () => openProgram(route)));
     }
     document.querySelector("#accounts-settings").hidden = !permissions.includes("users:manage");
-    for (const [id, app] of [["manage-users", "users"], ["manage-users-cli", "users-cli"]]) {
-      document.querySelector("#" + id).onclick = async () => {
-        try { await launchDesktop(app); display.close(); }
-        catch (error) { alert(error.message); }
-      };
+    document.querySelector("#storage-settings").hidden = !permissions.includes("app:disk-management");
+    const devices = document.querySelector("#device-controls");
+    for (const [app, title, permission] of [
+      ["audio-settings", "Sound Settings", "app:audio-settings"],
+      ["network", "Network Manager", "app:network"],
+      ["display-settings", "Display Arrangement", "app:display-settings"],
+    ]) {
+      if (!permissions.includes(permission)) continue;
+      const control = button(title, async () => {
+        try { await launchDesktop(app); }
+        catch (error) { alert(`Could not open ${title}: ${error.message}`); }
+      });
+      devices.append(control);
     }
+    document.querySelector("#manage-users").onclick = async () => {
+      try { await launchDesktop("users"); }
+      catch (error) { alert(error.message); }
+    };
+    document.querySelector("#manage-disks").onclick = async () => {
+      try { await launchDesktop("disk-management"); }
+      catch (error) { alert(error.message); }
+    };
+    document.querySelector("#check-audio").onclick = refreshAudio;
+    document.querySelector("#restart-audio").onclick = async () => {
+      audioStatus.textContent = "Restarting PipeWire…";
+      try {
+        const reply = await fetch("/api/desktop/audio/restart", {
+          method: "POST", headers: { ...sessionHeaders(), "Content-Type": "application/json" }, body: "{}",
+        });
+        const info = await reply.json();
+        if (!reply.ok) throw new Error(info.error || "Could not restart audio services.");
+        await refreshAudio();
+      } catch (error) { audioStatus.textContent = error.message; }
+    };
     installUpdate.onclick = async () => {
       if (!confirm("Save your work before updating. The kiosk will close and return when the update finishes.")) return;
       try { await launchDesktop("update"); display.close(); }

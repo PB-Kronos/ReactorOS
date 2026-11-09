@@ -3,7 +3,7 @@ set -eu
 
 # Signed updates call this as root after verifying the complete update archive.
 test "$(id -u)" -eq 0
-packages='pipewire-audio pipewire-pulse wireplumber pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils'
+packages='pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils'
 missing=''
 for package in $packages; do
     if ! dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then

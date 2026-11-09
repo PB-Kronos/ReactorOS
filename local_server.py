@@ -113,6 +113,21 @@ class Handler(SimpleHTTPRequestHandler):
             except OSError as exc:
                 return self.send_json({"error": str(exc)}, 503)
             return self.send_json({"started": "terminal"}, 202)
+        if self.path == "/api/desktop/audio/restart":
+            if not self.kiosk_request(origin) or not permitted("app:audio-settings"):
+                return self.send_json({"error": "Permission denied"}, 403)
+            try:
+                result = subprocess.run(
+                    ["systemctl", "--user", "restart", "pipewire.service",
+                     "pipewire-pulse.service", "wireplumber.service"],
+                    capture_output=True, text=True, timeout=12,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                return self.send_json({"error": f"Could not restart audio services: {exc}"}, 503)
+            if result.returncode:
+                detail = (result.stderr or result.stdout).strip()
+                return self.send_json({"error": detail or "PipeWire restart failed."}, 503)
+            return self.send_json({"restarted": True}, 200)
         if self.path == "/api/desktop/launch" and debian_session():
             app = data.get("app")
             if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users", "users-cli", "update"):
@@ -207,6 +222,32 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_json({"error": "Unknown plant request"}, 404)
 
     def do_GET(self):
+        if self.path == "/api/desktop/audio" and debian_session():
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            if not self.kiosk_request(origin, require_origin=False) or not permitted("app:audio-settings"):
+                return self.send_json({"error": "Permission denied"}, 403)
+            try:
+                info = subprocess.run(["pactl", "info"], capture_output=True, text=True, timeout=4)
+                sinks = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True,
+                                      text=True, timeout=4)
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                return self.send_json({"error": f"Audio service is unavailable: {exc}"}, 503)
+            if info.returncode:
+                detail = (info.stderr or info.stdout).strip()
+                return self.send_json({"summary": "No PulseAudio-compatible audio server is responding. " + detail})
+            fields = {}
+            for line in info.stdout.splitlines():
+                key, separator, value = line.partition(":")
+                if separator and key.strip() in ("Server Name", "Default Sink", "Default Source"):
+                    fields[key.strip()] = value.strip()
+            sink_names = [line.split("\t", 2)[1] for line in sinks.stdout.splitlines() if "\t" in line]
+            server = fields.get("Server Name", "Audio server connected")
+            default_sink = fields.get("Default Sink", "none")
+            if sink_names:
+                summary = f"{server} · Default output: {default_sink} · {len(sink_names)} output device(s) detected."
+            else:
+                summary = f"{server} · No output devices detected; check ALSA hardware and profile selection."
+            return self.send_json({"summary": summary, "sinks": sink_names, "defaultSink": default_sink})
         if self.path == "/api/desktop/update" and debian_session():
             origin = f"http://127.0.0.1:{self.server.server_port}"
             if not self.kiosk_request(origin, require_origin=False):

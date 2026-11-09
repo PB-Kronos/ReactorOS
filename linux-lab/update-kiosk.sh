@@ -5,7 +5,7 @@ test -f /opt/reactoros/kiosk-session.sh
 media=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 test -f "$media/rbwr/dist/index.html"
 apt-get update
-apt-get install -y --no-install-recommends thunar mousepad ristretto xterm pipewire-audio wireplumber python3-tk
+apt-get install -y --no-install-recommends thunar mousepad ristretto xterm pipewire-audio wireplumber python3-tk policykit-1 gparted
 target=/opt/reactoros
 stage=$(mktemp -d "$target/.update.XXXXXXXX")
 cp -r "$media/rbwr/dist" "$stage/"

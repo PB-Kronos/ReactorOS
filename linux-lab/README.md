@@ -42,6 +42,11 @@ VM powered off when copying its folder. The build recipe
 `build-kiosk-iso.sh` is for a future USB release once the VM is approved.
 The existing Debian Live installer media is separate from the kiosk build.
 
+Press the Windows/Super key to open the ReactorOS Start menu. The Start menu
+includes **Disk Management** (GParted) for accounts with the
+`app:disk-management` permission. Debian asks for authorization before
+GParted performs privileged disk operations.
+
 **ReactorOS Linux Lab** boots Debian Live Standard in VirtualBox. The VM has
 no hard disk. Its second virtual DVD contains the built ReactorOS workstation,
 the Python server, and the SQLite worker. Changes inside the guest are

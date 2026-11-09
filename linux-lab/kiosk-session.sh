@@ -13,13 +13,14 @@ export REACTOROS_DATA_DIR="$state"
 export REACTOROS_DEBIAN_SESSION=1
 export REACTOROS_KIOSK_PID=$$
 session=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/reactoros-kiosk.XXXXXXXX")
-trap 'rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key"; rmdir "$session"' EXIT
+trap 'rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key" "$session/start-menu-key"; rmdir "$session"' EXIT
 export REACTOROS_FULLSCREEN_KEY="$session/fullscreen-key"
+export REACTOROS_START_MENU_KEY="$session/start-menu-key"
 REACTOROS_TERMINAL_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 export REACTOROS_TERMINAL_TOKEN
 printf '<script>location.replace("http://127.0.0.1:18765/kiosk.html#%s")</script>\n' \
     "$REACTOROS_TERMINAL_TOKEN" > "$session/start.html"
-python3 - "$session/openbox.xml" "$REACTOROS_FULLSCREEN_KEY" <<'PY'
+python3 - "$session/openbox.xml" "$REACTOROS_FULLSCREEN_KEY" "$REACTOROS_START_MENU_KEY" <<'PY'
 import sys
 import shlex
 import xml.etree.ElementTree as ET
@@ -45,6 +46,9 @@ for key in ("C-w", "C-S-w", "C-q", "C-n", "C-S-p", "C-t", "C-l", "C-o",
 binding = ET.SubElement(keyboard, tag("keybind"), key="F11")
 action = ET.SubElement(binding, tag("action"), name="Execute")
 ET.SubElement(action, tag("command")).text = "/usr/bin/touch " + shlex.quote(sys.argv[2])
+binding = ET.SubElement(keyboard, tag("keybind"), key="W")
+action = ET.SubElement(binding, tag("action"), name="Execute")
+ET.SubElement(action, tag("command")).text = "/usr/bin/touch " + shlex.quote(sys.argv[3])
 for context in config.findall(f".//{tag('context')}"):
     if context.get("name") in ("Root", "Desktop"):
         for binding in list(context):
@@ -71,7 +75,7 @@ cleanup() {
     kill "$server" ${manager:+"$manager"} ${browser:+"$browser"} 2>/dev/null || true
     if [ -n "${browser:-}" ]; then wait "$browser" || true; fi
     wait "$server" || true
-    rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key"
+    rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key" "$session/start-menu-key"
     rmdir "$session"
 }
 trap cleanup EXIT

@@ -24,6 +24,7 @@ DESKTOP_APPS = {
     "editor": ["mousepad"],
     "images": ["ristretto"],
     "browser": ["firefox-esr", "--no-remote"],
+    "disk-management": ["gparted-pkexec"],
 }
 UPDATER = Path("/usr/local/sbin/reactoros-update")
 UPDATE_RESULT = Path("/run/reactoros-update-result")
@@ -210,6 +211,16 @@ class Handler(SimpleHTTPRequestHandler):
             key_file = os.environ.get("REACTOROS_FULLSCREEN_KEY")
             if not key_file or not self.kiosk_request(origin, require_origin=False):
                 return self.send_json({"error": "Kiosk fullscreen key unavailable"}, 403)
+            try:
+                sequence = str(Path(key_file).stat().st_mtime_ns)
+            except FileNotFoundError:
+                sequence = "0"
+            return self.send_json({"sequence": sequence})
+        if self.path == "/api/desktop/start-menu-key":
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            key_file = os.environ.get("REACTOROS_START_MENU_KEY")
+            if not key_file or not self.kiosk_request(origin, require_origin=False):
+                return self.send_json({"error": "Kiosk Start key unavailable"}, 403)
             try:
                 sequence = str(Path(key_file).stat().st_mtime_ns)
             except FileNotFoundError:

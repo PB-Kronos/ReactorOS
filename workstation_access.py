@@ -7,7 +7,7 @@ from workstation_programs import PROGRAMS
 
 ROLE_FILE = Path("/etc/reactoros/roles.json")
 APP_PERMISSIONS = {f"app:{name}" for name in PROGRAMS} | {
-    "app:files", "app:editor", "app:images", "app:browser",
+    "app:files", "app:editor", "app:images", "app:browser", "app:disk-management",
     "app:live-variables", "app:events",
 }
 PERMISSIONS = APP_PERMISSIONS | {"database:edit", "users:manage", "terminal:execute"}

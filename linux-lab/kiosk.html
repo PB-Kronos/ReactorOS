@@ -191,6 +191,21 @@
       await new Promise(resolve => setTimeout(resolve, 250));
     }
   }
+  async function listenForStartMenuKey() {
+    let previous;
+    while (true) {
+      try {
+        const reply = await fetch("/api/desktop/start-menu-key", {
+          cache: "no-store", headers: { "X-ReactorOS-Session": sessionStorage.getItem("reactoros-terminal-token") || "" },
+        });
+        if (!reply.ok) return;
+        const { sequence } = await reply.json();
+        if (previous !== undefined && sequence !== previous) showMenu(menu.hidden);
+        previous = sequence;
+      } catch {}
+      await new Promise(resolve => setTimeout(resolve, 180));
+    }
+  }
   function makeDraggable(handle, pane) {
     handle.addEventListener("pointerdown", event => {
       if (event.button !== 0 || pane.classList.contains("maximized")) return;
@@ -373,6 +388,7 @@
     }
     for (const [app, title] of Object.entries({
       files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet",
+      "disk-management": "Disk Management",
     })) {
       if (!permissions.includes("app:" + app)) continue;
       menu.append(button(title, async () => {
@@ -416,6 +432,7 @@
     start.onclick = () => showMenu(menu.hidden);
     start.disabled = false;
     void listenForKioskFullscreenKey();
+    void listenForStartMenuKey();
   } catch (error) {
     identity.textContent = error.message;
   }

@@ -24,7 +24,7 @@ DESKTOP_APPS = {
     "editor": ["mousepad"],
     "images": ["ristretto"],
     "browser": ["firefox-esr", "--no-remote"],
-    "disk-management": ["gparted-pkexec"],
+    "disk-management": ["/usr/sbin/gparted"],
 }
 UPDATER = Path("/usr/local/sbin/reactoros-update")
 UPDATE_RESULT = Path("/run/reactoros-update-result")
@@ -140,6 +140,10 @@ class Handler(SimpleHTTPRequestHandler):
                     command.append("--gui")
             else:
                 command = DESKTOP_APPS[app].copy()
+                if app == "disk-management" and not Path(command[0]).is_file():
+                    return self.send_json({
+                        "error": "GParted is not installed. Install the Debian package with sudo apt-get install gparted."
+                    }, 503)
             if app == "browser":
                 profile = DB.parent / "internet"
                 profile.mkdir(exist_ok=True)

@@ -18,7 +18,7 @@ if [ -n "$(ls -A)" ]; then
     exit 2
 fi
 
-boot_args='boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA'
+boot_args='boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA module_blacklist=pcspkr'
 lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
     --debian-installer none --apt-recommends false --cache false \
     --archive-areas 'main non-free-firmware' --firmware-chroot false --firmware-binary false \

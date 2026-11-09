@@ -88,6 +88,13 @@ opens the LightDM sign-in screen. Sign in as `reactor` with the initial
 password `live` to start the ReactorOS kiosk. Use **Start → Sign Out**
 to return to LightDM.
 
+If the normal entry fails while initializing graphics, try **Live system
+(amd64 fail-safe mode)**. This entry uses the same account and persistence
+settings and disables kernel graphics modesetting. If the machine still
+lands at a text console, sign in there and collect the graphics and display
+manager errors with `sudo journalctl -b -k -g 'amdgpu|radeon|firmware'`
+and `sudo journalctl -b -u lightdm --no-pager -n 40`.
+
 A plain live USB forgets installed updates and user changes after reboot.
 For persistence, use Linux to create an ext4 partition labelled
 `REACTOROS_DATA` in the free space after the written image, or on a second USB

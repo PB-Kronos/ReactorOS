@@ -16,13 +16,16 @@ if [ -n "$(ls -A)" ]; then
     exit 2
 fi
 
+boot_args='boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
 lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
     --debian-installer none --apt-recommends false --cache false \
-    --archive-areas main --bootappend-live 'boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
+    --archive-areas 'main non-free-firmware' --firmware-chroot false --firmware-binary false \
+    --bootappend-live "$boot_args" --bootappend-live-failsafe "$boot_args nomodeset"
 
 mkdir -p config/package-lists
 printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \
     lightdm lightdm-gtk-greeter xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
+    firmware-amd-graphics libgl1-mesa-dri \
     dbus-x11 openbox firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
     thunar mousepad ristretto xterm pipewire-audio wireplumber curl ca-certificates openssl \
     > config/package-lists/reactoros.list.chroot

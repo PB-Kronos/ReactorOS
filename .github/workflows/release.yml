@@ -1,11 +1,12 @@
-name: ReactorOS update release
+name: Publish ReactorOS update
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  release:
+  update:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -18,37 +19,33 @@ jobs:
         working-directory: rbwr
       - run: npm run build
         working-directory: rbwr
-      - run: sh linux-lab/package-update.sh "$GITHUB_REF_NAME"
-      - name: Build Debian Live ISO
-        run: |
-          mkdir -p release-out/usb
-          docker run --rm --privileged -v "$PWD:/project" debian:trixie sh -ec '
-            apt-get update
-            apt-get install -y live-build debootstrap xorriso squashfs-tools isolinux syslinux-common grub-efi-amd64-bin mtools dosfstools
-            sh /project/linux-lab/build-kiosk-iso.sh /project /project/release-out/usb
-          '
-      - name: Publish ISO release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" \
-              release-out/usb/ReactorOS-amd64.iso \
-              release-out/usb/ReactorOS-amd64.iso.sha256 --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --latest \
-              release-out/usb/ReactorOS-amd64.iso \
-              release-out/usb/ReactorOS-amd64.iso.sha256
-          fi
-      - name: Sign and publish update archive
+      - name: Package signed update
         env:
           RELEASE_KEY: ${{ secrets.REACTOROS_RELEASE_KEY }}
-          GH_TOKEN: ${{ github.token }}
         run: |
+          version="v1.1.${GITHUB_RUN_NUMBER}"
+          sh linux-lab/package-update.sh "$version"
           umask 077
           key=$(mktemp)
           trap 'rm -f -- "$key"' EXIT
           printf '%s\n' "$RELEASE_KEY" > "$key"
-          openssl pkeyutl -sign -inkey "$key" -rawin -in release-out/reactoros-update.tar.gz -out release-out/reactoros-update.tar.gz.sig
-          gh release upload "$GITHUB_REF_NAME" --clobber \
-            release-out/reactoros-update.tar.gz release-out/reactoros-update.tar.gz.sig
+          openssl pkeyutl -sign -inkey "$key" -rawin \
+            -in release-out/reactoros-update.tar.gz \
+            -out release-out/reactoros-update.tar.gz.sig
+          printf '%s\n' "$version" > release-out/VERSION
+      - name: Publish rolling update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(cat release-out/VERSION)
+          if gh release view "$version" >/dev/null 2>&1; then
+            gh release upload "$version" --clobber \
+              release-out/reactoros-update.tar.gz \
+              release-out/reactoros-update.tar.gz.sig
+          else
+            gh release create "$version" --target "$GITHUB_SHA" \
+              --title "ReactorOS update $version" \
+              --notes "Signed ReactorOS software update for commit $GITHUB_SHA." \
+              release-out/reactoros-update.tar.gz \
+              release-out/reactoros-update.tar.gz.sig
+          fi

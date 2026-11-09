@@ -19,11 +19,12 @@ Store the private PEM in the GitHub Actions secret `REACTOROS_RELEASE_KEY`.
 Keep an offline backup. Deliver the public PEM to each machine over a trusted
 path. The updater verifies the downloaded archive with that pinned key.
 
-Push a version tag such as `v1.0.0` to build, sign and publish an update.
-Each tagged release also builds the USB ISO and attaches both the ISO and its
-SHA-256 file to that GitHub Release. Ordinary source pushes do not build an
-ISO or update installed machines; the image is not retained as a separate
-Actions artifact.
+Each push to `main` builds, signs and publishes a software update as a GitHub
+Release (`v1.1.N`). Installed systems can fetch it with the updater. This does
+not rebuild an installed ISO automatically. To build a new USB ISO, run the
+**Build ReactorOS USB image** workflow manually from GitHub Actions; it attaches
+the ISO and SHA-256 file to the latest update release. No ISO is built for each
+commit or update batch.
 
 ## Set up an existing Debian install
 
@@ -96,19 +97,22 @@ lands at a text console, sign in there and collect the graphics and display
 manager errors with `sudo journalctl -b -k -g 'amdgpu|radeon|firmware'`
 and `sudo journalctl -b -u lightdm --no-pager -n 40`.
 
-A plain live USB forgets installed updates and user changes after reboot.
-For persistence, use Linux to create an ext4 partition labelled
+A live image without a persistence volume forgets installed updates and user
+changes after reboot. ReactorOS is configured to use Debian Live's full-root
+overlay when a persistence volume is present. For persistence, use Linux to create an ext4 partition labelled
 `REACTOROS_DATA` in the free space after the written image, or on a second USB
-drive connected before boot. Format only the intended data partition.
+drive or internal drive connected before boot. Format only the intended data partition.
 At the root of that partition, create `persistence.conf` containing `/ union`
 on a single line. This saves changes to the live system, including accounts,
-roles, home folders, databases and installed application updates.
+roles, home folders, databases, downloaded files and installed application
+updates. Debian merges the writable overlay at boot; the system does not need
+to copy folders into the read-only image first. Any changes made without the
+labelled and configured partition attached remain temporary.
 
-The boot entry searches USB storage by default. To use a dedicated partition
-on an internal drive, give it the same label and configuration, then remove
-`persistence-media=removable-usb` from the boot entry's kernel arguments. A
-temporary boot menu edit applies to that boot only. Use a single matching
-partition to make the intended storage unambiguous.
+The boot entry searches for the `REACTOROS_DATA` label on attached storage,
+including USB and internal drives. Keep one matching partition attached to
+avoid ambiguity. The volume must be Linux-readable (ext4 is recommended),
+and must contain the exact `/ union` line in `persistence.conf` at its root.
 
 Verify persistence by creating a test file in your home folder, rebooting
 with the same persistence volume attached, and checking the file is still

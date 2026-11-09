@@ -2,12 +2,14 @@
 set -eu
 
 # Run as root on Debian, with an empty native Linux build directory.
-if [ "$#" -ne 2 ] || [ "$(id -u)" -ne 0 ]; then
-    printf 'Usage: sudo sh build-kiosk-iso.sh PROJECT_ROOT EMPTY_BUILD_DIR\n' >&2
+if [ "$#" -ne 3 ] || [ "$(id -u)" -ne 0 ]; then
+    printf 'Usage: sudo sh build-kiosk-iso.sh PROJECT_ROOT EMPTY_BUILD_DIR VERSION\n' >&2
     exit 2
 fi
 root=$(realpath "$1")
 lab="$root/linux-lab"
+version=$3
+printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
 test -f "$root/rbwr/dist/index.html"
 mkdir -p "$2"
 cd "$2"
@@ -16,7 +18,7 @@ if [ -n "$(ls -A)" ]; then
     exit 2
 fi
 
-boot_args='boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA persistence-media=removable-usb'
+boot_args='boot=live components username=reactor noautologin persistence persistence-label=REACTOROS_DATA'
 lb config --distribution trixie --architectures amd64 --binary-images iso-hybrid \
     --debian-installer none --apt-recommends false --cache false \
     --archive-areas 'main non-free-firmware' --firmware-chroot false --firmware-binary false \
@@ -33,6 +35,7 @@ printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv 
 overlay=config/includes.chroot
 app="$overlay/opt/reactoros"
 mkdir -p "$app/rbwr" "$overlay/usr/share/xsessions" "$overlay/etc/lightdm/lightdm.conf.d" "$overlay/usr/local/sbin"
+printf '%s\n' "$version" > "$app/VERSION"
 install -m 0755 "$lab/reactoros-update.sh" "$overlay/usr/local/sbin/reactoros-update"
 install -D -m 0644 "$lab/release-signing.pub" "$overlay/etc/reactoros/update-public.pem"
 printf '%s\n' 'PB-Kronos/ReactorOS' > "$overlay/etc/reactoros/update-repo"

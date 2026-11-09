@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-version=${1:?Pass a release tag such as v1.0.0}
+version=${1:?Pass a release version such as v1.1.42}
 printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
 lab=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$lab")

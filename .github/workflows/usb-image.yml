@@ -27,9 +27,10 @@ jobs:
             echo 'No published update release exists yet.' >&2
             exit 1
           fi
+          version="$latest"
           echo "REACTOROS_VERSION=$latest" >> "$GITHUB_ENV"
           mkdir -p release-out/usb
-          docker run --rm --privileged -e REACTOROS_VERSION="$REACTOROS_VERSION" \
+          docker run --rm --privileged -e REACTOROS_VERSION="$version" \
             -v "$PWD:/project" debian:trixie sh -ec '
             apt-get update
             apt-get install -y live-build debootstrap xorriso squashfs-tools isolinux syslinux-common grub-efi-amd64-bin mtools dosfstools

@@ -39,8 +39,11 @@ ReactorOS launcher and does not change filesystem permissions.
 
 The kiosk VM uses a dynamically allocated disk capped at 5 GiB. Keep the
 VM powered off when copying its folder. The build recipe
-`build-kiosk-iso.sh` is for a future USB release once the VM is approved.
-The existing Debian Live installer media is separate from the kiosk build.
+`build-kiosk-iso.sh` creates the separate ReactorOS USB image. It includes
+both a live desktop and Debian Installer. Choose the installer entry to place
+the full workstation on a writable disk or a second USB drive; the installed
+system keeps files and package changes on that drive and supports signed
+application and system-package updates.
 
 Press the Windows/Super key to open the ReactorOS Start menu. The Start menu
 includes **Disk Management** (GParted) for accounts with the

@@ -8,10 +8,11 @@ from workstation_programs import PROGRAMS
 ROLE_FILE = Path("/etc/reactoros/roles.json")
 APP_PERMISSIONS = {f"app:{name}" for name in PROGRAMS} | {
     "app:files", "app:editor", "app:images", "app:browser", "app:disk-management",
+    "app:network", "app:audio-settings", "app:display-settings",
     "app:live-variables", "app:events",
 }
 PERMISSIONS = APP_PERMISSIONS | {"database:edit", "users:manage", "terminal:execute"}
-BASIC = {"app:greeting", "app:manual", "app:status-desk"}
+BASIC = {"app:greeting", "app:manual", "app:status-desk", "app:network", "app:audio-settings", "app:display-settings"}
 DEFAULT_ROLES = {
     "trainee": BASIC,
     "operator": BASIC | {"app:reactor", "app:mainframe"},

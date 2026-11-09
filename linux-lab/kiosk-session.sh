@@ -12,6 +12,9 @@ cd /opt/reactoros
 export REACTOROS_DATA_DIR="$state"
 export REACTOROS_DEBIAN_SESSION=1
 export REACTOROS_KIOSK_PID=$$
+# Make sure browser audio has its PulseAudio-compatible PipeWire endpoint.
+systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service \
+    >/dev/null 2>&1 || printf '%s\n' 'ReactorOS: PipeWire user audio services did not start.' >&2
 session=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/reactoros-kiosk.XXXXXXXX")
 trap 'rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key" "$session/start-menu-key"; rmdir "$session"' EXIT
 export REACTOROS_FULLSCREEN_KEY="$session/fullscreen-key"
@@ -72,7 +75,7 @@ finally:
 ' &
 server=$!
 cleanup() {
-    kill "$server" ${manager:+"$manager"} ${browser:+"$browser"} 2>/dev/null || true
+    kill "$server" ${manager:+"$manager"} ${polkit:+"$polkit"} ${browser:+"$browser"} 2>/dev/null || true
     if [ -n "${browser:-}" ]; then wait "$browser" || true; fi
     wait "$server" || true
     rm -f "$session/start.html" "$session/openbox.xml" "$session/fullscreen-key" "$session/start-menu-key"
@@ -80,8 +83,11 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 0' USR1
+xrandr --auto >/dev/null 2>&1 || true
 openbox --config-file "$session/openbox.xml" &
 manager=$!
+lxpolkit >/dev/null 2>&1 &
+polkit=$!
 
 for attempt in $(seq 1 30); do
     if python3 -c 'from urllib.request import urlopen; urlopen("http://127.0.0.1:18765/api/operator", timeout=1)'; then

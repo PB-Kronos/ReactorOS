@@ -392,7 +392,8 @@
     }
     for (const [app, title] of Object.entries({
       files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet",
-      "disk-management": "Disk Management",
+      "disk-management": "Disk Management", network: "Network Manager",
+      "audio-settings": "Sound Settings", "display-settings": "Display Arrangement",
     })) {
       if (!permissions.includes("app:" + app)) continue;
       menu.append(button(title, async () => {

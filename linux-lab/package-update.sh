@@ -12,7 +12,9 @@ stage=$(mktemp -d)
 trap 'rm -rf -- "$stage"' EXIT
 mkdir -p "$stage/rbwr"
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" \
-    "$root/workstation_access.py" "$lab/manage-users.py" "$lab/kiosk-session.sh" "$stage/"
+    "$root/workstation_access.py" "$lab/manage-users.py" "$lab/kiosk-session.sh" \
+    "$lab/system-migrate.sh" "$lab/reactoros-update.sh" "$stage/"
+chmod 0755 "$stage/system-migrate.sh" "$stage/reactoros-update.sh"
 cp -r "$root/rbwr/dist" "$stage/rbwr/"
 cp "$lab/kiosk.html" "$lab/plant-tools.html" "$stage/rbwr/dist/"
 printf '%s\n' "$version" > "$stage/VERSION"

@@ -20,8 +20,10 @@ Keep an offline backup. Deliver the public PEM to each machine over a trusted
 path. The updater verifies the downloaded archive with that pinned key.
 
 Each push to `main` builds, signs and publishes a software update as a GitHub
-Release (`v1.1.N`). Installed systems can fetch it with the updater. This does
-not rebuild an installed ISO automatically. To build a new USB ISO, run the
+Release (`v1.1.N`). Installed systems can fetch it with the updater. Signed
+updates can also run the reviewed root migration script to install OS packages
+and update system configuration. This does not rebuild an ISO automatically.
+To build a new USB ISO, run the
 **Build ReactorOS USB image** workflow manually from GitHub Actions; it attaches
 the ISO and SHA-256 file to the latest update release. No ISO is built for each
 commit or update batch.
@@ -60,8 +62,8 @@ sudo reactoros-update
 
 Run `sudo reactoros-update` to request a newer release. It keeps the previous
 application directory at `/opt/reactoros.previous` and retains the installed
-Debian accounts, role configuration and per-user data. OS packages still
-follow Debian's update path.
+Debian accounts, role configuration and per-user data. Signed updates can run
+an idempotent system migration before switching the application version.
 
 For opt-in daily updates, install the timer and service from the same trusted
 source and enable the timer:
@@ -76,7 +78,7 @@ Scheduled runs skip active kiosk sessions and retry at the next scheduled
 check. A kiosk that stays signed in needs a maintenance sign-out or a manual
 update. Check results with `journalctl -u reactoros-update.service`.
 
-## Build and write a USB
+## Install ReactorOS to a USB or disk
 
 Open the latest GitHub Release and download `ReactorOS-amd64.iso` plus its
 SHA-256 file from the release assets. Compare the hash with PowerShell
@@ -84,11 +86,17 @@ SHA-256 file from the release assets. Compare the hash with PowerShell
 
 On Windows, use an image writer such as Rufus and choose DD image mode if it
 asks. Select the actual USB device by size and name. Writing the image
-overwrites that drive. Reboot, choose the USB in the PC's boot menu, and
-select **Live system (amd64)**. Debian creates the `reactor` account and
-opens the LightDM sign-in screen. Sign in as `reactor` with the initial
-password `live` to start the ReactorOS kiosk. Use **Start → Sign Out**
-to return to LightDM.
+overwrites that drive. Reboot from this installer USB and choose **Debian
+Installer**. To install ReactorOS onto another USB drive, keep the installer
+USB booted and select the target USB in the installer. Installing formats the
+selected target; check its size and device name carefully. Debian Installer
+creates the account and password you choose, then installs the included
+ReactorOS desktop as a regular writable Debian system. Files, settings,
+installed packages and updates persist on that target without a live overlay.
+
+The image also retains **Live system (amd64)** for trying the desktop without
+installing. Live mode needs the separate `REACTOROS_DATA` persistence volume
+described below if changes should survive reboot.
 
 If the normal entry fails while initializing graphics, try **Live system
 (amd64 fail-safe mode)**. This entry uses the same account and persistence

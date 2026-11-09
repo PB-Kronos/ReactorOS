@@ -25,6 +25,9 @@ DESKTOP_APPS = {
     "images": ["ristretto"],
     "browser": ["firefox-esr", "--no-remote"],
     "disk-management": ["/usr/sbin/gparted"],
+    "network": ["nm-connection-editor"],
+    "audio-settings": ["pavucontrol"],
+    "display-settings": ["arandr"],
 }
 UPDATER = Path("/usr/local/sbin/reactoros-update")
 UPDATE_RESULT = Path("/run/reactoros-update-result")
@@ -125,7 +128,11 @@ class Handler(SimpleHTTPRequestHandler):
                 maintenance = (
                     'echo "Update started" > /run/reactoros-update-result; '
                     "trap 'systemctl start lightdm' EXIT; "
-                    "systemctl stop lightdm && /usr/local/sbin/reactoros-update "
+                    "systemctl stop lightdm && "
+                    "if [ -x /opt/reactoros/reactoros-update.sh ]; then "
+                    "install -m 0755 /opt/reactoros/reactoros-update.sh /usr/local/sbin/reactoros-update; fi && "
+                    "if [ -x /opt/reactoros/system-migrate.sh ]; then /opt/reactoros/system-migrate.sh; fi && "
+                    "/usr/local/sbin/reactoros-update "
                     ">> /run/reactoros-update-result 2>&1"
                 )
                 command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",

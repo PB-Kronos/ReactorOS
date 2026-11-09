@@ -54,8 +54,12 @@ if [ "$version" = "$current" ] || [ "$(printf '%s\n%s\n' "$current" "$version" |
 fi
 test -f "$stage/app/rbwr/dist/index.html"
 test -f "$stage/app/kiosk-session.sh"
+test -x "$stage/app/system-migrate.sh"
 python3 -m py_compile "$stage/app/"*.py
 require_idle "$@"
+# The archive signature covers this root-level migration script as well as the
+# application payload. Run it before swapping application versions.
+"$stage/app/system-migrate.sh"
 backup=/opt/reactoros.previous
 if [ -e "$backup" ]; then
     mv -T -- "$backup" "$stage/older"

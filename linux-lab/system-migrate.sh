@@ -9,8 +9,12 @@ test "$(id -u)" -eq 0
 python3 - <<'PY'
 from pathlib import Path
 import re
+import os
 
-apt = Path('/etc/apt')
+def is_network_uri(uri):
+    return re.match(r'^(?:https?|ftp|mirror):', uri, re.I) is not None
+
+apt = Path(os.environ.get('REACTOROS_APT_ROOT', '/etc/apt'))
 paths = [apt / 'sources.list', *apt.glob('sources.list.d/*.list')]
 for path in paths:
     if not path.is_file():
@@ -59,6 +63,39 @@ for path in apt.glob('sources.list.d/*.sources'):
             break
     if changed:
         path.write_text('\n\n'.join(stanzas).rstrip() + '\n')
+
+# Some offline Debian installs have only the DVD listed in APT. If no active
+# network mirror remains, provide Debian's official Trixie and security repos.
+network_mirror = False
+for path in [apt / 'sources.list', *apt.glob('sources.list.d/*.list')]:
+    if not path.is_file():
+        continue
+    for line in path.read_text().splitlines():
+        match = re.match(r'^[ \t]*deb(?:-src)?[ \t]+(?:\[[^]]+\][ \t]+)?(\S+)', line)
+        if match and is_network_uri(match.group(1)):
+            network_mirror = True
+            break
+for path in apt.glob('sources.list.d/*.sources'):
+    for stanza in re.split(r'\n[ \t]*\n', path.read_text()):
+        if re.search(r'(?mi)^Enabled:[ \t]*no[ \t]*$', stanza):
+            continue
+        match = re.search(r'(?mi)^URIs:[ \t]*([^\n]*(?:\n[ \t]+[^\n]*)*)', stanza)
+        if match and any(is_network_uri(uri) for uri in match.group(1).split()):
+            network_mirror = True
+            break
+if not network_mirror:
+    source_file = apt / 'sources.list.d/reactoros-debian.sources'
+    source_file.parent.mkdir(parents=True, exist_ok=True)
+    source_file.write_text('''Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: main non-free-firmware
+
+Types: deb
+URIs: https://security.debian.org/debian-security
+Suites: trixie-security
+Components: main non-free-firmware
+''')
 PY
 packages='pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils'
 missing=''

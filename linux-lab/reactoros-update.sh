@@ -7,6 +7,13 @@ esac
 test "$(id -u)" -eq 0 || { echo 'Run with sudo.' >&2; exit 1; }
 app=/opt/reactoros
 test -f "$app/kiosk-session.sh" || { echo 'Install the ReactorOS kiosk first.' >&2; exit 1; }
+# The setup-disc updater can outlive the application copy. Refresh it from the
+# signed, installed app and continue with the current implementation.
+if [ "$0" = /usr/local/sbin/reactoros-update ] && [ -f "$app/reactoros-update.sh" ] && \
+        ! cmp -s "$app/reactoros-update.sh" "$0"; then
+    install -m 0755 "$app/reactoros-update.sh" /usr/local/sbin/reactoros-update
+    exec /usr/local/sbin/reactoros-update "$@"
+fi
 config=/etc/reactoros
 test -s "$config/update-repo" && test -s "$config/update-public.pem" || {
     echo 'Updater is not configured. Run install-updater.sh from the ReactorOS setup disc.' >&2
@@ -30,6 +37,13 @@ require_idle() {
     fi
 }
 require_idle "$@"
+
+# Reconcile system packages even when the signed application version is
+# already current. This repairs machines whose old bootstrap updater swapped
+# app files without running the OS migration.
+if [ -x "$app/system-migrate.sh" ]; then
+    "$app/system-migrate.sh"
+fi
 
 stage=$(mktemp -d /opt/.reactoros-update.XXXXXXXX)
 trap 'rm -rf -- "$stage"' EXIT

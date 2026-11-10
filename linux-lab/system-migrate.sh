@@ -105,9 +105,27 @@ for package in $packages; do
     fi
 done
 if [ -n "$missing" ]; then
+    printf 'ReactorOS migration: installing missing packages:%s\n' "$missing"
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $missing
 fi
+
+# A previous interrupted/manual install can leave dpkg metadata present while
+# the session launchers themselves are absent. Repair those critical binaries.
+gnome_reinstall=''
+if [ ! -x /usr/bin/gnome-session ]; then
+    gnome_reinstall="$gnome_reinstall gnome-session-bin"
+fi
+if [ ! -x /usr/bin/gnome-shell ]; then
+    gnome_reinstall="$gnome_reinstall gnome-shell"
+fi
+if [ -n "$gnome_reinstall" ]; then
+    printf 'ReactorOS migration: repairing missing GNOME executables:%s\n' "$gnome_reinstall"
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall --no-install-recommends $gnome_reinstall
+fi
+test -x /usr/bin/gnome-session || { echo 'GNOME session manager is still missing after migration.' >&2; exit 1; }
+test -x /usr/bin/gnome-shell || { echo 'GNOME Shell is still missing after migration.' >&2; exit 1; }
 
 install -d -m 0755 /etc/X11/xorg.conf.d /etc/NetworkManager/conf.d
 cat > /etc/X11/xorg.conf.d/90-reactoros-touchpad.conf <<'EOF'

@@ -19,6 +19,9 @@ with GDM and LightDM without stopping the display manager for other users.
 The session writes startup diagnostics to
 `~/.local/state/reactoros/gnome-session.log` and
 `~/.local/state/reactoros/local-server.log` if a desktop session fails to start.
+From a text console, `sudo /opt/reactoros/system-migrate.sh` repairs system
+packages even if the installed app version is already current. The updater
+also refreshes its CLI copy from the installed app before the next update.
 
 For an existing kiosk VM, run `Attach-Kiosk-Update.ps1` on the Windows
 host after building RBWR. In the VM, switch to a Debian console with

@@ -39,4 +39,20 @@ function reactorosAppIsAllowed(id) {
     if class_marker not in source:
         raise SystemExit(f"Unsupported Apps Menu source: missing {class_marker!r}")
     source = source.replace(class_marker, helper + class_marker, 1)
+
+# Start on the complete allowed app list, not the Favorites-only view. The
+# latter made apps appear to vanish after users pinned another app to the dash.
+favorites_view = "this._displayButtons(this._listApplications(null));"
+all_apps_view = """const allApps = new Map();
+        for (const categoryApps of Object.values(this.applicationsByCategory)) {
+            for (const app of categoryApps) {
+                if (app instanceof Shell.App)
+                    allApps.set(app.get_id(), app);
+            }
+        }
+        this._displayButtons([...allApps.values()]);"""
+if all_apps_view not in source:
+    if favorites_view not in source:
+        raise SystemExit("Unsupported Apps Menu source: cannot find initial Favorites app list")
+    source = source.replace(favorites_view, all_apps_view, 1)
 extension.write_text(source, encoding="utf-8")

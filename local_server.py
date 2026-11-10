@@ -201,7 +201,16 @@ class Handler(SimpleHTTPRequestHandler):
                 # their own toolkit theme so upstream layouts remain intact.
                 if app in {"files", "editor", "images", "audio-settings"}:
                     env["GTK_THEME"] = "ReactorOS95"
-                subprocess.Popen(command, cwd=Path.home(), start_new_session=True, env=env)
+                if app == "settings":
+                    state = Path(os.environ.get(
+                        "REACTOROS_DATA_DIR", str(Path.home() / ".local/state/reactoros")))
+                    state.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    with (state / "settings-launch.log").open("a", encoding="utf-8") as log:
+                        log.write(f"\nLaunching Settings: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        subprocess.Popen(command, cwd=Path.home(), start_new_session=True,
+                                         env=env, stdout=log, stderr=subprocess.STDOUT)
+                else:
+                    subprocess.Popen(command, cwd=Path.home(), start_new_session=True, env=env)
             except OSError as exc:
                 return self.send_json({"error": str(exc)}, 503)
             return self.send_json({"started": app}, 202)

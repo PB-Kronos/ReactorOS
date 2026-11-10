@@ -3,6 +3,7 @@ set -eu
 
 # Signed updates call this as root after verifying the complete update archive.
 test "$(id -u)" -eq 0
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 # Debian Installer may leave its installation DVD enabled as an APT source.
 # A ReactorOS installer disc has no Debian Release index, so that stale entry
 # makes every later apt-get update fail even when network mirrors are healthy.
@@ -255,7 +256,6 @@ cat > /etc/dconf/db/reactoros.d/locks/00-reactoros <<'EOF'
 /org/gnome/shell/extensions/dash-to-panel/panel-element-positions
 /org/gnome/shell/extensions/user-theme/name
 EOF
-script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 install -m 0644 "$script_dir/reactoros.desktop" /usr/share/xsessions/reactoros.desktop
 install -m 0644 "$script_dir/reactoros-gnome-shell.css" \
     /usr/share/themes/ReactorOS95/gnome-shell/gnome-shell.css
@@ -273,6 +273,6 @@ if [ -d "$apps_menu_source" ]; then
     rm -rf -- "$apps_menu_target"
     cp -a "$apps_menu_source" "$apps_menu_target"
     sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
-    python3 /opt/reactoros/patch-apps-menu.py "$apps_menu_target/extension.js"
+    python3 "$script_dir/patch-apps-menu.py" "$apps_menu_target/extension.js"
 fi
 dconf update

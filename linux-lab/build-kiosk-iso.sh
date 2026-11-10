@@ -72,6 +72,8 @@ cp -r "$root/rbwr/dist" "$app/rbwr/"
 cp "$lab/manage-users.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" "$app/"
 cp -r "$lab/applications" "$app/share/"
 install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"
+install -m 0755 "$lab/reactoros-update-from-session.sh" \
+    "$overlay/usr/local/sbin/reactoros-update-from-session"
 install -m 0755 "$lab/reactoros-update.sh" "$app/reactoros-update.sh"
 cp "$lab/kiosk.html" "$lab/plant-tools.html" "$app/rbwr/dist/"
 cp "$lab/kiosk-session.sh" "$app/"

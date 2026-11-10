@@ -10,6 +10,7 @@ cd /opt/reactoros
 export REACTOROS_DATA_DIR="$state"
 export REACTOROS_DEBIAN_SESSION=1
 export REACTOROS_KIOSK_PID=$$
+export REACTOROS_SESSION_ID="${XDG_SESSION_ID:-}"
 export REACTOROS_TERMINAL_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export DCONF_PROFILE=reactoros
 export GNOME_SHELL_SESSION_MODE=gnome
@@ -33,7 +34,7 @@ try:
     signal.pause()
 finally:
     server.close()
-' &
+' >"$state/local-server.log" 2>&1 &
 server=$!
 session_manager=''
 cleanup() {
@@ -54,6 +55,16 @@ for attempt in $(seq 1 30); do
     sleep 1
 done
 test "$ready" -eq 1
-/usr/bin/gnome-session --session=gnome &
-session_manager=$!
-wait "$session_manager"
+if [ ! -x /usr/bin/gnome-session ] || [ ! -x /usr/bin/gnome-shell ]; then
+    printf '%s\n' 'GNOME session packages are missing; see the signed update result and rerun system migration.' \
+        > "$state/session-start-error.log"
+    exit 127
+fi
+if /usr/bin/gnome-session --session=gnome >"$state/gnome-session.log" 2>&1; then
+    exit 0
+else
+    result=$?
+    printf 'GNOME session exited with status %s; see %s/gnome-session.log\n' "$result" "$state" \
+        > "$state/session-start-error.log"
+    exit "$result"
+fi

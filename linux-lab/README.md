@@ -13,6 +13,12 @@ native movable windows and multi-monitor placement; the RBWR program opens
 maximized by default. The lab account is `operator` with the initial lab
 password `live`.
 The desktop reads the real Debian username from the local server.
+The Settings updater asks systemd-logind to sign out only the active ReactorOS
+session, then runs the signed update as a detached system service. It works
+with GDM and LightDM without stopping the display manager for other users.
+The session writes startup diagnostics to
+`~/.local/state/reactoros/gnome-session.log` and
+`~/.local/state/reactoros/local-server.log` if a desktop session fails to start.
 
 For an existing kiosk VM, run `Attach-Kiosk-Update.ps1` on the Windows
 host after building RBWR. In the VM, switch to a Debian console with

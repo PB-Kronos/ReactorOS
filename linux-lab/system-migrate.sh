@@ -156,5 +156,7 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 install -m 0644 "$script_dir/reactoros.desktop" /usr/share/xsessions/reactoros.desktop
 install -m 0644 "$script_dir/reactoros-gnome-shell.css" \
     /usr/share/themes/ReactorOS95/gnome-shell/gnome-shell.css
+install -m 0755 "$script_dir/reactoros-update-from-session.sh" \
+    /usr/local/sbin/reactoros-update-from-session
 cp "$script_dir"/applications/*.desktop /opt/reactoros/share/applications/
 dconf update

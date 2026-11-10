@@ -141,19 +141,15 @@ class Handler(SimpleHTTPRequestHandler):
             if app == "update":
                 if not updater_configured():
                     return self.send_json({"error": "Set up the signed updater before updating."}, 409)
-                maintenance = (
-                    'echo "Update started" > /run/reactoros-update-result; '
-                    "trap 'systemctl start display-manager' EXIT; "
-                    "systemctl stop display-manager && "
-                    "if [ -x /opt/reactoros/reactoros-update.sh ]; then "
-                    "install -m 0755 /opt/reactoros/reactoros-update.sh /usr/local/sbin/reactoros-update; fi && "
-                    "if [ -x /opt/reactoros/system-migrate.sh ]; then /opt/reactoros/system-migrate.sh; fi && "
-                    "/usr/local/sbin/reactoros-update "
-                    ">> /run/reactoros-update-result 2>&1"
-                )
+                session_id = os.environ.get("REACTOROS_SESSION_ID", "")
+                if not session_id.isdecimal():
+                    return self.send_json({
+                        "error": "This login session cannot be identified for automatic sign-out. "
+                                 "Switch to a text console and run the updater there."
+                    }, 409)
                 command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",
                            "/usr/bin/systemd-run", "--unit=reactoros-kiosk-update", "--collect",
-                           "/bin/bash", "-c", maintenance]
+                           "/usr/local/sbin/reactoros-update-from-session", session_id]
             elif privileged:
                 command = ["xterm", "-T", "ReactorOS User Manager", "-e", "sudo",
                            "--preserve-env=DISPLAY,XAUTHORITY", "/usr/bin/python3", str(ROOT / "manage-users.py")]

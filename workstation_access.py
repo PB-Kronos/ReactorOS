@@ -125,22 +125,38 @@ def current_access():
     except (OSError, ValueError, KeyError, TypeError):
         policy = {"roles": {}, "users": {}, "visible_apps": {}}
         roles, permissions = [], set()
-    if not sudo:
+    if sudo:
+        # Sudo accounts can administer ReactorOS account and menu policy even
+        # when their explicitly selected ReactorOS role is more restrictive.
+        permissions.update({"users:manage", "terminal:execute"})
+    else:
         permissions.difference_update({"users:manage", "terminal:execute"})
     allowed = permissions & PERMISSIONS
     configured_apps = policy.get("visible_apps", {}).get(account.pw_name)
     if configured_apps is None:
         configured_apps = [app for app, (permission, _label, _desktop) in MENU_APPS.items()
                            if permission in allowed]
-    visible_apps = {
-        app for app in configured_apps
-        if app in MENU_APPS and MENU_APPS[app][0] in allowed
-    }
+    else:
+        # Once an account has an explicit app allowlist, unchecked apps lose
+        # their app permission even if the assigned role would normally grant it.
+        allowed.difference_update(APP_PERMISSIONS)
+    visible_apps = set()
+    for app in configured_apps:
+        if app in MENU_APPS:
+            permission = MENU_APPS[app][0]
+            # Checking a ReactorOS application in the editor grants both its
+            # launch permission and its Start menu visibility.
+            if permission.startswith("app:"):
+                allowed.add(permission)
+                visible_apps.add(app)
+            elif permission in allowed:
+                visible_apps.add(app)
     visible_apps.update(
         app for app in configured_apps
         if (isinstance(app, str) and app.startswith("desktop:") and
             app.endswith(".desktop") and "/" not in app[8:] and "\\" not in app[8:])
     )
+    allowed.intersection_update(PERMISSIONS)
     visible_apps = sorted(visible_apps)
     return {"name": account.pw_name, "roles": roles, "sudoGroup": sudo,
             "permissions": sorted(allowed), "visibleApps": visible_apps}

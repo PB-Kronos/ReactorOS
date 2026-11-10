@@ -2,7 +2,7 @@
 Type=Application
 Name=ReactorOS Settings
 Comment=Configure devices, accounts, disks and updates
-Exec=/usr/bin/python3 /opt/reactoros/reactoros-settings.py
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py settings
 Icon=preferences-system
 Categories=Settings;System;
 StartupNotify=true

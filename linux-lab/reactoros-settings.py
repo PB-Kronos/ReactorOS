@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import traceback
 import urllib.request
 
 import gi
@@ -31,7 +32,7 @@ def launch(app):
 class Settings(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="org.reactoros.Settings")
-        self.operator = get_operator()
+        self.operator = {"permissions": [], "sudoGroup": False}
         self.permissions = set(self.operator.get("permissions", []))
         self._install_theme()
 
@@ -54,9 +55,17 @@ class Settings(Gtk.Application):
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     def do_activate(self):
+        try:
+            self.operator = get_operator()
+            self.permissions = set(self.operator.get("permissions", []))
+        except Exception as error:
+            self._log_start_error(error)
+            self._show_error("ReactorOS could not connect to its local service", error)
+            return
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("ReactorOS Settings")
         window.set_default_size(720, 650)
+        window.set_position(Gtk.WindowPosition.CENTER)
         header = Gtk.HeaderBar(title="Settings")
         header.set_show_close_button(True)
         window.set_titlebar(header)
@@ -103,6 +112,7 @@ class Settings(Gtk.Application):
                                     start_new_session=True)))
         self._add_tab(notebook, "Software", update_controls)
         window.show_all()
+        window.present()
 
     def _add_tab(self, notebook, name, controls):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -143,12 +153,22 @@ class Settings(Gtk.Application):
         try:
             callback()
         except Exception as error:
-            dialog = Gtk.MessageDialog(transient_for=None, modal=True,
-                message_type=Gtk.MessageType.ERROR, buttons=Gtk.ButtonsType.CLOSE,
-                text="Could not open setting")
-            dialog.format_secondary_text(str(error))
-            dialog.run()
-            dialog.destroy()
+            self._show_error("Could not open setting", error)
+
+    def _log_start_error(self, error):
+        state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+        directory = os.path.join(state, "reactoros")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "settings-launch.log"), "a", encoding="utf-8") as stream:
+            stream.write(traceback.format_exc() + "\n")
+
+    def _show_error(self, title, error):
+        dialog = Gtk.MessageDialog(transient_for=None, modal=True,
+            message_type=Gtk.MessageType.ERROR, buttons=Gtk.ButtonsType.CLOSE,
+            text=title)
+        dialog.format_secondary_text(str(error))
+        dialog.run()
+        dialog.destroy()
 
 
 if __name__ == "__main__":

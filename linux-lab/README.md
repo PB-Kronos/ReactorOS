@@ -60,10 +60,12 @@ uses the Debian identity with the simulator's existing supervisor access.
 your own Debian password. It lists accounts, creates Debian users, resets
 passwords, assigns one or more built-in or custom ReactorOS roles, and
 manages the actual Debian sudo group. Role permissions are additive.
-The editor also has a per-account Start menu list; an app appears only when
-visibility is enabled and the account has permission to launch it. Menu
-overrides live in the ReactorOS session runtime directory, leaving ordinary
-GNOME and KDE menus unchanged.
+The Start Menu Editor has a per-account app allowlist. Checking an app both
+shows it in that user's ReactorOS Start menu and grants its ReactorOS launch
+permission; unchecking it hides and blocks that app. Non-app privileges such
+as user administration and database editing remain role-based. Menu overrides
+are applied only in the ReactorOS session, leaving ordinary GNOME and KDE
+menus unchanged.
 Unassigned accounts start as trainee, or admin if they already belong to
 Debian's sudo group. Reload the kiosk or sign in again to refresh Start.
 

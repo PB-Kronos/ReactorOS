@@ -25,7 +25,9 @@ def role_permissions(user, policy):
     permissions = set()
     for role in roles:
         permissions.update(DEFAULT_ROLES.get(role, policy.get("roles", {}).get(role, [])))
-    if not sudo:
+    if sudo:
+        permissions.update({"users:manage", "terminal:execute"})
+    else:
         permissions.difference_update({"users:manage", "terminal:execute"})
     return permissions
 
@@ -113,21 +115,22 @@ def main():
         permissions = role_permissions(user, policy)
         entries.clear()
         for key, (_permission, label, _desktop) in MENU_APPS.items():
-            entries[key] = (label, _permission in permissions,
-                            "ReactorOS app" if _permission in permissions else "Role permission needed")
+            entries[key] = (label, True, "App access follows this selection")
         for identifier, (label, _path) in installed_menu_apps(user.pw_dir).items():
             entries["desktop:" + identifier] = (label, True, "Assigned app")
 
         configured = policy.get("visible_apps", {}).get(user.pw_name)
         if configured is None:
             visible_keys.clear()
-            visible_keys.update(key for key, (_label, permitted, _access) in entries.items()
-                                if key in MENU_APPS and permitted)
+            visible_keys.update(key for key, (_label, _permitted, _access) in entries.items()
+                                if key in MENU_APPS and
+                                MENU_APPS[key][0] in role_permissions(user, policy))
         else:
             visible_keys.clear()
             visible_keys.update(key for key in configured if key in entries and
-                                (key not in MENU_APPS or entries[key][1]))
-        status.configure(text=f"Editing {user.pw_name}. Role permissions still control ReactorOS app access.")
+                                (key not in MENU_APPS or MENU_APPS[key][0].startswith("app:") or
+                                 MENU_APPS[key][0] in permissions))
+        status.configure(text=f"Editing {user.pw_name}. Checked apps are both visible and allowed to launch.")
         render()
 
     def render(*_args):
@@ -136,10 +139,14 @@ def main():
         rows.clear()
         query = search_var.get().strip().casefold()
         for key, (label, permitted, access) in sorted(entries.items(), key=lambda item: item[1][0].casefold()):
-            if key in MENU_APPS and not permitted:
-                access = "Role permission needed"
+            if key in MENU_APPS and MENU_APPS[key][0].startswith("app:"):
+                access = "Allowed" if key in visible_keys else "Blocked"
+            elif key in MENU_APPS:
+                access = "Role permission needed" if not permitted else "Allowed"
             elif key in visible_keys:
-                access = "ReactorOS app" if key in MENU_APPS else "Assigned app"
+                access = "Allowed"
+            else:
+                access = "Blocked"
             if query and query not in label.casefold() and query not in key.casefold():
                 continue
             marker = "[x]" if key in visible_keys else "[ ]"
@@ -153,9 +160,9 @@ def main():
         key = tree.focus()
         if not key or key not in entries:
             return
-        if key in MENU_APPS and not entries[key][1]:
+        if key in MENU_APPS and not MENU_APPS[key][0].startswith("app:") and not entries[key][1]:
             messagebox.showinfo("ReactorOS Start Menu Editor",
-                                "Assign the app's ReactorOS role permission in User Management first.",
+                                "This system tool requires the matching ReactorOS role permission.",
                                 parent=root)
             return
         if key in visible_keys:

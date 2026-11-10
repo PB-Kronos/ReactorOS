@@ -47,6 +47,7 @@ if [ -d "$apps_menu_source" ]; then
     install -d -m 0755 "$(dirname "$apps_menu_target")"
     cp -a "$apps_menu_source" "$apps_menu_target"
     sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
+    python3 /opt/reactoros/patch-apps-menu.py "$apps_menu_target/extension.js"
 fi
 systemctl enable NetworkManager.service
 dconf update
@@ -83,6 +84,7 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
 cp -r "$root/rbwr/dist" "$app/rbwr/"
 cp "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" \
     "$lab/reactoros-launch-app.py" "$app/"
+install -m 0755 "$lab/patch-apps-menu.py" "$app/patch-apps-menu.py"
 cp -r "$lab/themes/ReactorOS95" "$app/themes/"
 cp -r "$lab/applications" "$app/share/"
 install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"

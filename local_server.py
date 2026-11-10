@@ -20,6 +20,7 @@ from workstation_access import current_access, debian_session, permitted
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "rbwr" / "dist"
 DESKTOP_APPS = {
+    "settings": [sys.executable, str(ROOT / "reactoros-settings.py")],
     "files": ["thunar"],
     "editor": ["mousepad"],
     "images": ["ristretto"],

@@ -273,5 +273,6 @@ if [ -d "$apps_menu_source" ]; then
     rm -rf -- "$apps_menu_target"
     cp -a "$apps_menu_source" "$apps_menu_target"
     sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
+    python3 /opt/reactoros/patch-apps-menu.py "$apps_menu_target/extension.js"
 fi
 dconf update

@@ -62,12 +62,13 @@ test "$ready" -eq 1
 menu_data="$XDG_RUNTIME_DIR/reactoros-menu-data"
 menu_apps="$menu_data/applications"
 install -d -m 0700 "$menu_apps"
-python3 - "$menu_apps" <<'PY'
+python3 - "$menu_apps" "$menu_data/allowed-applications.txt" <<'PY'
 import sys
 from pathlib import Path
 from workstation_access import MENU_APPS, current_access, installed_menu_apps
 
 directory = Path(sys.argv[1])
+allowlist = Path(sys.argv[2])
 access = current_access()
 visible = set(access.get("visibleApps", []))
 allowed_ids = {
@@ -75,6 +76,8 @@ allowed_ids = {
     if app in visible
 }
 allowed_ids.update(app[8:] for app in visible if app.startswith("desktop:"))
+allowlist.write_text("".join(f"{identifier}\n" for identifier in sorted(allowed_ids)),
+                     encoding="utf-8")
 for app, (_permission, _label, desktop_id) in MENU_APPS.items():
     if app not in visible:
         (directory / desktop_id).write_text(
@@ -90,6 +93,7 @@ for desktop_id in installed_menu_apps(Path.home()):
         "[Desktop Entry]\nType=Application\nHidden=true\nNoDisplay=true\n",
         encoding="utf-8")
 PY
+export REACTOROS_APP_ALLOWLIST="$menu_data/allowed-applications.txt"
 export XDG_DATA_DIRS="$menu_data:/opt/reactoros/share:$reactoros_system_data_dirs"
 # GNOME also reads desktop files from XDG_DATA_HOME, which would otherwise
 # bypass the system menu allowlist. Keep normal user data available through

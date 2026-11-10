@@ -8,7 +8,7 @@ import urllib.request
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gio, Gtk
+from gi.repository import Gdk, Gtk
 
 BASE = "http://127.0.0.1:18765"
 TOKEN = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
@@ -29,12 +29,8 @@ def launch(app):
         return json.loads(response.read())
 
 
-class Settings(Gtk.Application):
+class Settings:
     def __init__(self):
-        # Keep this utility a normal, independent GTK window even if a stale
-        # Settings process is still registered on the session bus.
-        super().__init__(application_id="org.reactoros.Settings",
-                         flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.operator = {"permissions": [], "sudoGroup": False}
         self.permissions = set(self.operator.get("permissions", []))
         self._install_theme()
@@ -65,10 +61,11 @@ class Settings(Gtk.Application):
             self._log_start_error(error)
             self._show_error("ReactorOS could not connect to its local service", error)
             return
-        window = Gtk.ApplicationWindow(application=self)
+        window = Gtk.Window()
         window.set_title("ReactorOS Settings")
         window.set_default_size(720, 650)
         window.set_position(Gtk.WindowPosition.CENTER)
+        window.connect("destroy", Gtk.main_quit)
         header = Gtk.HeaderBar(title="Settings")
         header.set_show_close_button(True)
         window.set_titlebar(header)
@@ -117,6 +114,7 @@ class Settings(Gtk.Application):
         window.show_all()
         window.present()
         self._log_message("Settings window presented")
+        return True
 
     def _add_tab(self, notebook, name, controls):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -183,10 +181,19 @@ class Settings(Gtk.Application):
 
 
 if __name__ == "__main__":
+    settings = None
     try:
-        raise SystemExit(Settings().run([]))
+        settings = Settings()
+        if settings.do_activate():
+            Gtk.main()
+        raise SystemExit(0)
     except Exception as error:
         print("ReactorOS Settings:", error)
+        try:
+            if settings is not None:
+                settings._log_start_error(error)
+        except Exception:
+            pass
         try:
             dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR,
                 buttons=Gtk.ButtonsType.CLOSE, text="ReactorOS Settings could not start")

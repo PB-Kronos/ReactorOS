@@ -190,7 +190,13 @@ class Handler(SimpleHTTPRequestHandler):
                 profile.mkdir(exist_ok=True)
                 command.extend(["--profile", str(profile), "about:blank"])
             try:
-                subprocess.Popen(command, cwd=Path.home(), start_new_session=True)
+                env = os.environ.copy()
+                # Apply the ReactorOS GTK theme only to apps launched by this
+                # session. GNOME Control Center and the rest of GNOME keep
+                # their own toolkit theme so upstream layouts remain intact.
+                if app in {"files", "editor", "images", "audio-settings"}:
+                    env["GTK_THEME"] = "ReactorOS95"
+                subprocess.Popen(command, cwd=Path.home(), start_new_session=True, env=env)
             except OSError as exc:
                 return self.send_json({"error": str(exc)}, 503)
             return self.send_json({"started": app}, 202)

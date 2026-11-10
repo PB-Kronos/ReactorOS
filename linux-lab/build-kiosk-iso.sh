@@ -114,6 +114,7 @@ apps-menu-toggle-menu=['Super_L']
 panel-position='BOTTOM'
 panel-size=34
 show-activities-button=false
+panel-element-positions='{"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'
 
 [org/gnome/shell/extensions/user-theme]
 name='ReactorOS95'
@@ -126,7 +127,6 @@ secondary-color='#008080'
 
 [org/gnome/desktop/interface]
 color-scheme='prefer-light'
-gtk-theme='ReactorOS95'
 icon-theme='Adwaita'
 enable-hot-corners=false
 
@@ -135,7 +135,6 @@ show-banners=false
 show-in-lock-screen=false
 EOF
 cat > "$overlay/etc/dconf/db/reactoros.d/locks/00-reactoros" <<'EOF'
-/org/gnome/desktop/interface/gtk-theme
 /org/gnome/desktop/interface/enable-hot-corners
 /org/gnome/desktop/notifications/show-banners
 /org/gnome/desktop/notifications/show-in-lock-screen
@@ -144,6 +143,7 @@ cat > "$overlay/etc/dconf/db/reactoros.d/locks/00-reactoros" <<'EOF'
 /org/gnome/shell/keybindings/toggle-application-view
 /org/gnome/shell/keybindings/toggle-overview
 /org/gnome/shell/extensions/apps-menu/apps-menu-toggle-menu
+/org/gnome/shell/extensions/dash-to-panel/panel-element-positions
 /org/gnome/shell/extensions/user-theme/name
 EOF
 

@@ -14,7 +14,6 @@ export REACTOROS_SESSION_ID="${XDG_SESSION_ID:-}"
 export REACTOROS_TERMINAL_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export DCONF_PROFILE=reactoros
 export GNOME_SHELL_SESSION_MODE=gnome
-export GTK_THEME=ReactorOS95
 reactoros_system_data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 export XDG_DATA_DIRS="/opt/reactoros/share:$reactoros_system_data_dirs"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"

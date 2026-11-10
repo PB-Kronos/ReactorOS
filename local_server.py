@@ -131,9 +131,9 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"restarted": True}, 200)
         if self.path == "/api/desktop/launch" and debian_session():
             app = data.get("app")
-            if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users", "users-cli", "update"):
+            if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users", "users-cli", "menu-editor", "update"):
                 return self.send_json({"error": "Unknown desktop application"}, 400)
-            privileged = app in ("users", "users-cli", "update")
+            privileged = app in ("users", "users-cli", "menu-editor", "update")
             allowed = (current_access()["sudoGroup"] if app == "update" else
                        permitted("users:manage" if privileged else f"app:{app}"))
             if not allowed or (privileged and not self.kiosk_request(origin)):
@@ -150,6 +150,10 @@ class Handler(SimpleHTTPRequestHandler):
                 command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",
                            "/usr/bin/systemd-run", "--unit=reactoros-kiosk-update", "--collect",
                            "/usr/local/sbin/reactoros-update-from-session", session_id]
+            elif app == "menu-editor":
+                command = ["xterm", "-T", "ReactorOS Start Menu Editor", "-e", "sudo",
+                           "--preserve-env=DISPLAY,XAUTHORITY", "/usr/bin/python3",
+                           str(ROOT / "reactoros-menu-editor.py")]
             elif privileged:
                 command = ["xterm", "-T", "ReactorOS User Manager", "-e", "sudo",
                            "--preserve-env=DISPLAY,XAUTHORITY", "/usr/bin/python3", str(ROOT / "manage-users.py")]

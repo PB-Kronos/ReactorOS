@@ -12,7 +12,8 @@ stage=$(mktemp -d)
 trap 'rm -rf -- "$stage"' EXIT
 mkdir -p "$stage/rbwr" "$stage/share/applications" "$stage/themes"
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" \
-    "$root/workstation_access.py" "$lab/manage-users.py" "$lab/reactoros-webapp.py" \
+    "$root/workstation_access.py" "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" \
+    "$lab/reactoros-webapp.py" \
     "$lab/reactoros-settings.py" "$lab/reactoros.desktop" "$lab/reactoros-gnome-shell.css" \
     "$lab/reactoros-update-from-session.sh" "$lab/kiosk-session.sh" \
     "$lab/system-migrate.sh" "$lab/reactoros-update.sh" "$lab/reactoros-launch-app.py" "$stage/"

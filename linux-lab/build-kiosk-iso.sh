@@ -81,7 +81,7 @@ install -D -m 0644 "$lab/release-signing.pub" "$overlay/etc/reactoros/update-pub
 printf '%s\n' 'PB-Kronos/ReactorOS' > "$overlay/etc/reactoros/update-repo"
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" "$root/workstation_access.py" "$app/"
 cp -r "$root/rbwr/dist" "$app/rbwr/"
-cp "$lab/manage-users.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" \
+cp "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" \
     "$lab/reactoros-launch-app.py" "$app/"
 cp -r "$lab/themes/ReactorOS95" "$app/themes/"
 cp -r "$lab/applications" "$app/share/"

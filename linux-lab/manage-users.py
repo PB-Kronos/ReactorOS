@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 
-from workstation_access import DEFAULT_ROLES, MENU_APPS, PERMISSIONS, ROLE_FILE, read_policy
+from workstation_access import DEFAULT_ROLES, PERMISSIONS, ROLE_FILE, read_policy
 
 
 def save(policy):
@@ -105,7 +105,7 @@ def manage_gui():
 
     root = tk.Tk()
     root.title("ReactorOS User Manager")
-    root.geometry("1040x520")
+    root.geometry("760x520")
     root.configure(bg="#c0c0c0", padx=12, pady=12)
     root.option_add("*Background", "#c0c0c0")
     root.option_add("*Listbox.background", "white")
@@ -142,16 +142,6 @@ def manage_gui():
     def assigned(user, policy):
         return policy["users"].get(user.pw_name, ["admin" if has_sudo(user) else "trainee"])
 
-    def visible_assigned(user, policy):
-        configured = policy.get("visible_apps", {}).get(user.pw_name)
-        if configured is not None:
-            return configured
-        available = DEFAULT_ROLES | policy["roles"]
-        granted = {permission for role in assigned(user, policy)
-                   for permission in available.get(role, [])}
-        return [app for app, (permission, _label, _desktop) in MENU_APPS.items()
-                if permission in granted]
-
     def refresh_roles():
         policy = read_policy()
         names = selected(users)
@@ -159,12 +149,9 @@ def manage_gui():
             user = account()
             sudo_value.set(has_sudo(user))
             fill(roles, sorted(DEFAULT_ROLES | policy["roles"]), assigned(user, policy))
-            fill(menu_apps, menu_labels.values(), [menu_labels[app] for app in visible_assigned(user, policy)
-                                                   if app in menu_labels])
         else:
             sudo_value.set(False)
             fill(roles, sorted(DEFAULT_ROLES | policy["roles"]))
-            fill(menu_apps, menu_labels.values())
 
     def refresh_users(name=None):
         fill(users, sorted(u.pw_name for u in pwd.getpwall() if 1000 <= u.pw_uid < 60000), [name])
@@ -221,9 +208,6 @@ def manage_gui():
             else:
                 subprocess.run(["/usr/bin/gpasswd", "-d", user.pw_name, "sudo"], check=True)
         policy["users"][user.pw_name] = names
-        policy.setdefault("visible_apps", {})[user.pw_name] = [
-            app for app, label in menu_labels.items() if label in selected(menu_apps)
-        ]
         save(policy)
         refresh_roles()
         messagebox.showinfo("User Manager", "Account settings saved. Sign in again to refresh access.", parent=root)
@@ -271,15 +255,9 @@ def manage_gui():
     user_panel = tk.Frame(panels)
     user_panel.pack(side="left", padx=(0, 10), fill="both", expand=True)
     role_panel = tk.Frame(panels)
-    role_panel.pack(side="left", fill="both", expand=True)
-    menu_panel = tk.Frame(panels)
-    menu_panel.pack(side="left", fill="both", expand=True)
+    role_panel.pack(side="left", padx=(0, 10), fill="both", expand=True)
     users = listbox(user_panel, "Debian accounts")
     roles = listbox(role_panel, "Assigned ReactorOS roles", tk.MULTIPLE)
-    menu_labels = {app: f"{label}  [{app}]" for app, (_permission, label, _desktop) in MENU_APPS.items()}
-    menu_apps = listbox(menu_panel, "Visible in this user's Start menu", tk.MULTIPLE)
-    menu_apps.configure(width=38, height=14)
-    fill(menu_apps, menu_labels.values())
     users.bind("<<ListboxSelect>>", lambda _event: refresh_roles())
     sudo_value = tk.BooleanVar()
     tk.Checkbutton(root, text="Debian administrator (sudo)", variable=sudo_value).pack(anchor="w", pady=8)

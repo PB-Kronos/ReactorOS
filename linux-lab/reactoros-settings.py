@@ -84,6 +84,8 @@ class Settings(Gtk.Application):
         if "users:manage" in self.permissions:
             account_controls.append(("User Management", "Accounts, groups and ReactorOS roles",
                                      lambda: self._launch("users")))
+            account_controls.append(("Start Menu Editor", "Choose installed apps for each user's Start menu",
+                                     lambda: self._launch("menu-editor")))
         if "app:disk-management" in self.permissions:
             account_controls.append(("Disk Management", "Inspect and manage disks and partitions",
                                      lambda: self._launch("disk-management")))
@@ -154,4 +156,12 @@ if __name__ == "__main__":
         raise SystemExit(Settings().run([]))
     except Exception as error:
         print("ReactorOS Settings:", error)
+        try:
+            dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE, text="ReactorOS Settings could not start")
+            dialog.format_secondary_text(str(error))
+            dialog.run()
+            dialog.destroy()
+        except Exception:
+            pass
         raise SystemExit(1)

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Start Menu Editor
+Comment=Choose installed applications for each user's ReactorOS Start menu
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py menu-editor
+Icon=applications-other
+Categories=Settings;System;
+StartupNotify=true

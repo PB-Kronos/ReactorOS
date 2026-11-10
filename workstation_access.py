@@ -1,6 +1,7 @@
 """Debian account to ReactorOS permission mapping."""
 import json
 import os
+import configparser
 from pathlib import Path
 
 from workstation_programs import PROGRAMS
@@ -23,6 +24,7 @@ MENU_APPS = {
     "manual": ("app:manual", "Operator Manual", "reactoros-manual.desktop"),
     "live-variables": ("app:live-variables", "Plant Database", "reactoros-database.desktop"),
     "events": ("app:events", "Server Event Log", "reactoros-events.desktop"),
+    "menu-editor": ("users:manage", "Start Menu Editor", "reactoros-menu-editor.desktop"),
     "settings": ("app:settings", "ReactorOS Settings", "reactoros-settings.desktop"),
     "network": ("app:network", "Wi-Fi & Network", "reactoros-network.desktop"),
     "files": ("app:files", "File Explorer", "reactoros-files.desktop"),
@@ -48,6 +50,55 @@ def read_policy():
         return json.loads(ROLE_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {"roles": {}, "users": {}}
+
+
+def desktop_id(path, applications_dir):
+    """Return the freedesktop menu ID for an applications-directory entry."""
+    return "-".join(path.relative_to(applications_dir).parts)
+
+
+def installed_menu_apps(user_home=None):
+    """Discover installable desktop entries for the per-user Start menu editor."""
+    roots = []
+    if user_home:
+        roots.append(Path(user_home) / ".local/share/applications")
+    data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+    roots.append(data_home / "applications")
+    data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    roots.extend(Path(item) / "applications" for item in data_dirs.split(":") if item)
+    roots.extend((Path("/opt/reactoros/share/applications"),
+                  Path("/usr/local/share/applications"), Path("/usr/share/applications")))
+
+    core_ids = {desktop for _permission, _label, desktop in MENU_APPS.values()}
+    found = {}
+    seen_roots = set()
+    for applications_dir in roots:
+        try:
+            applications_dir = applications_dir.resolve()
+        except OSError:
+            continue
+        if applications_dir in seen_roots or not applications_dir.is_dir():
+            continue
+        seen_roots.add(applications_dir)
+        for path in sorted(applications_dir.rglob("*.desktop")):
+            identifier = desktop_id(path, applications_dir)
+            if identifier in found or identifier in core_ids:
+                continue
+            parser = configparser.ConfigParser(interpolation=None, strict=False)
+            try:
+                with path.open(encoding="utf-8", errors="replace") as stream:
+                    parser.read_file(stream)
+                entry = parser["Desktop Entry"]
+                if (entry.get("Type", "Application") != "Application" or
+                        entry.getboolean("Hidden", fallback=False) or
+                        entry.getboolean("NoDisplay", fallback=False)):
+                    continue
+                label = entry.get("Name", "").strip()
+            except (OSError, KeyError, configparser.Error, ValueError):
+                continue
+            if label:
+                found[identifier] = (label, path)
+    return found
 
 
 def debian_session():
@@ -77,12 +128,20 @@ def current_access():
     if not sudo:
         permissions.difference_update({"users:manage", "terminal:execute"})
     allowed = permissions & PERMISSIONS
-    visible_apps = policy.get("visible_apps", {}).get(account.pw_name)
-    if visible_apps is None:
-        visible_apps = [app for app, (permission, _label, _desktop) in MENU_APPS.items()
-                        if permission in allowed]
-    visible_apps = sorted(app for app in visible_apps
-                          if app in MENU_APPS and MENU_APPS[app][0] in allowed)
+    configured_apps = policy.get("visible_apps", {}).get(account.pw_name)
+    if configured_apps is None:
+        configured_apps = [app for app, (permission, _label, _desktop) in MENU_APPS.items()
+                           if permission in allowed]
+    visible_apps = {
+        app for app in configured_apps
+        if app in MENU_APPS and MENU_APPS[app][0] in allowed
+    }
+    visible_apps.update(
+        app for app in configured_apps
+        if (isinstance(app, str) and app.startswith("desktop:") and
+            app.endswith(".desktop") and "/" not in app[8:] and "\\" not in app[8:])
+    )
+    visible_apps = sorted(visible_apps)
     return {"name": account.pw_name, "roles": roles, "sudoGroup": sudo,
             "permissions": sorted(allowed), "visibleApps": visible_apps}
 

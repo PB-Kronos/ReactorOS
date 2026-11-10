@@ -65,19 +65,76 @@ install -d -m 0700 "$menu_apps"
 python3 - "$menu_apps" <<'PY'
 import sys
 from pathlib import Path
-from workstation_access import MENU_APPS, current_access
+from workstation_access import MENU_APPS, current_access, installed_menu_apps
 
 directory = Path(sys.argv[1])
-visible = set(current_access().get("visibleApps", []))
+access = current_access()
+visible = set(access.get("visibleApps", []))
+allowed_ids = {
+    desktop_id for app, (_permission, _label, desktop_id) in MENU_APPS.items()
+    if app in visible
+}
+allowed_ids.update(app[8:] for app in visible if app.startswith("desktop:"))
 for app, (_permission, _label, desktop_id) in MENU_APPS.items():
-    override = directory / desktop_id
-    if app in visible:
-        override.unlink(missing_ok=True)
+    if app not in visible:
+        (directory / desktop_id).write_text(
+            "[Desktop Entry]\nType=Application\nHidden=true\nNoDisplay=true\n",
+            encoding="utf-8")
     else:
-        override.write_text("[Desktop Entry]\nType=Application\nHidden=true\nNoDisplay=true\n",
-                            encoding="utf-8")
+        (directory / desktop_id).unlink(missing_ok=True)
+for desktop_id in installed_menu_apps(Path.home()):
+    if desktop_id in allowed_ids:
+        (directory / desktop_id).unlink(missing_ok=True)
+        continue
+    (directory / desktop_id).write_text(
+        "[Desktop Entry]\nType=Application\nHidden=true\nNoDisplay=true\n",
+        encoding="utf-8")
 PY
 export XDG_DATA_DIRS="$menu_data:/opt/reactoros/share:$reactoros_system_data_dirs"
+# GNOME also reads desktop files from XDG_DATA_HOME, which would otherwise
+# bypass the system menu allowlist. Keep normal user data available through
+# symlinks, but give ReactorOS its own applications directory and app data.
+reactoros_real_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+reactoros_session_data_home="$state/xdg-data-home"
+mkdir -p "$reactoros_session_data_home"
+python3 - "$reactoros_session_data_home" "$reactoros_real_data_home" <<'PY'
+import sys
+from pathlib import Path
+from workstation_access import MENU_APPS, current_access, desktop_id
+
+session_home = Path(sys.argv[1])
+real_home = Path(sys.argv[2])
+visible = set(current_access().get("visibleApps", []))
+allowed_ids = {desktop for app, (_permission, _label, desktop) in MENU_APPS.items()
+               if app in visible}
+core_ids = {desktop for _permission, _label, desktop in MENU_APPS.values()}
+allowed_ids.update(app[8:] for app in visible if app.startswith("desktop:"))
+for item in (real_home.iterdir() if real_home.is_dir() else ()):
+    if item.name == "applications":
+        continue
+    link = session_home / item.name
+    if not link.exists() and not link.is_symlink():
+        link.symlink_to(item, target_is_directory=item.is_dir())
+
+apps_overlay = session_home / "applications"
+apps_overlay.mkdir(parents=True, exist_ok=True)
+user_apps = real_home / "applications"
+if user_apps.is_dir():
+    for path in sorted(user_apps.rglob("*.desktop")):
+        identifier = desktop_id(path, user_apps)
+        target = apps_overlay / identifier
+        if identifier in core_ids:
+            target.unlink(missing_ok=True)
+            continue
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        if identifier in allowed_ids:
+            target.symlink_to(path)
+        else:
+            target.write_text("[Desktop Entry]\nType=Application\nHidden=true\nNoDisplay=true\n",
+                              encoding="utf-8")
+PY
+export XDG_DATA_HOME="$reactoros_session_data_home"
 if [ ! -x /usr/bin/gnome-session ] || [ ! -x /usr/bin/gnome-shell ]; then
     printf '%s\n' 'GNOME session packages are missing; see the signed update result and rerun system migration.' \
         > "$state/session-start-error.log"

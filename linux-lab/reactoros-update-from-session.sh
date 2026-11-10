@@ -34,7 +34,4 @@ fi
 if [ -x /opt/reactoros/reactoros-update.sh ]; then
     install -m 0755 /opt/reactoros/reactoros-update.sh /usr/local/sbin/reactoros-update
 fi
-if [ -x /opt/reactoros/system-migrate.sh ]; then
-    /opt/reactoros/system-migrate.sh
-fi
 exec /usr/local/sbin/reactoros-update

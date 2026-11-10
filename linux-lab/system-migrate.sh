@@ -27,6 +27,34 @@ for path in paths:
     if updated != original:
         path.write_text(updated)
 
+# Debian 13 requires an explicit Signed-By for its archive mirrors. Older
+# installer media sometimes leave unsigned entries in sources.list; normalize
+# only official Debian network entries, preserving their suites and options.
+debian_keyring = '/usr/share/keyrings/debian-archive-keyring.gpg'
+for path in paths:
+    if not path.is_file():
+        continue
+    original = path.read_text()
+    updated_lines = []
+    changed = False
+    for line in original.splitlines():
+        match = re.match(r'^([ \t]*deb(?:-src)?[ \t]+)(?:\[([^]]*)\][ \t]+)?(\S+)([ \t]+.*)$', line)
+        if not match or not re.match(r'^https?://(?:deb\.debian\.org|security\.debian\.org)(?:/|$)', match.group(3), re.I):
+            updated_lines.append(line)
+            continue
+        prefix, options, uri, tail = match.groups()
+        option_list = (options or '').split()
+        if not any(option.lower().startswith('signed-by=') for option in option_list):
+            option_list.append('signed-by=' + debian_keyring)
+            changed = True
+        if 'non-free-firmware' not in tail.split('#', 1)[0].split():
+            tail = tail.rstrip() + ' non-free-firmware'
+            changed = True
+        updated_lines.append(prefix + '[' + ' '.join(option_list) + '] ' + uri + tail)
+    updated = '\n'.join(updated_lines) + ('\n' if original.endswith('\n') else '')
+    if changed:
+        path.write_text(updated)
+
 for path in apt.glob('sources.list.d/*.sources'):
     original = path.read_text()
     stanzas = re.split(r'\n[ \t]*\n', original)
@@ -64,6 +92,30 @@ for path in apt.glob('sources.list.d/*.sources'):
     if changed:
         path.write_text('\n\n'.join(stanzas).rstrip() + '\n')
 
+# Apply equivalent corrections to deb822 source files while leaving third-party
+# repositories alone. Add the non-free firmware component needed by Wi-Fi.
+for path in apt.glob('sources.list.d/*.sources'):
+    original = path.read_text()
+    stanzas = re.split(r'\n[ \t]*\n', original)
+    changed = False
+    for index, stanza in enumerate(stanzas):
+        if re.search(r'(?mi)^Enabled:[ \t]*no[ \t]*$', stanza):
+            continue
+        uris_match = re.search(r'(?mi)^URIs:[ \t]*([^\n]*(?:\n[ \t]+[^\n]*)*)', stanza)
+        if not uris_match or not re.search(r'https?://(?:deb\.debian\.org|security\.debian\.org)(?:/|$)', uris_match.group(1), re.I):
+            continue
+        updated = stanza
+        if not re.search(r'(?mi)^Signed-By:', updated):
+            updated += '\nSigned-By: ' + debian_keyring
+        components = re.search(r'(?mi)^Components:[ \t]*(.*(?:\n[ \t]+.*)*)', updated)
+        if components and 'non-free-firmware' not in components.group(1).split():
+            updated = updated[:components.start(1)] + components.group(1).rstrip() + ' non-free-firmware' + updated[components.end(1):]
+        if updated != stanza:
+            stanzas[index] = updated
+            changed = True
+    if changed:
+        path.write_text('\n\n'.join(stanzas).rstrip() + '\n')
+
 # Some offline Debian installs have only the DVD listed in APT. If no active
 # network mirror remains, provide Debian's official Trixie and security repos.
 network_mirror = False
@@ -90,11 +142,13 @@ if not network_mirror:
 URIs: https://deb.debian.org/debian
 Suites: trixie trixie-updates
 Components: main non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
 Types: deb
 URIs: https://security.debian.org/debian-security
 Suites: trixie-security
 Components: main non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 ''')
 PY
 packages='dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant firmware-iwlwifi firmware-realtek firmware-atheros firmware-brcm80211 lxpolkit arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
@@ -159,8 +213,8 @@ disable-user-extensions=false
 overlay-key=''
 
 [org/gnome/shell/keybindings]
-toggle-application-view=[]
-toggle-overview=[]
+toggle-application-view=@as []
+toggle-overview=@as []
 
 [org/gnome/shell/extensions/apps-menu]
 apps-menu-toggle-menu=['Super_L']

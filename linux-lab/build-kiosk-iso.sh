@@ -104,8 +104,8 @@ disable-user-extensions=false
 overlay-key=''
 
 [org/gnome/shell/keybindings]
-toggle-application-view=[]
-toggle-overview=[]
+toggle-application-view=@as []
+toggle-overview=@as []
 
 [org/gnome/shell/extensions/apps-menu]
 apps-menu-toggle-menu=['Super_L']

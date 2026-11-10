@@ -38,13 +38,6 @@ require_idle() {
 }
 require_idle "$@"
 
-# Reconcile system packages even when the signed application version is
-# already current. This repairs machines whose old bootstrap updater swapped
-# app files without running the OS migration.
-if [ -x "$app/system-migrate.sh" ]; then
-    "$app/system-migrate.sh"
-fi
-
 stage=$(mktemp -d /opt/.reactoros-update.XXXXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
 url="https://github.com/$repo/releases/latest/download"
@@ -63,7 +56,12 @@ version=$(cat "$stage/app/VERSION")
 printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
 current=$(cat "$app/VERSION" 2>/dev/null || echo v0.0.0)
 if [ "$version" = "$current" ] || [ "$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -1)" != "$version" ]; then
-    echo "Installed version $current is already current or newer."
+    # Still use the signed payload's migration to repair machines where an
+    # earlier migration partially completed or had invalid dconf values.
+    if [ -x "$stage/app/system-migrate.sh" ]; then
+        "$stage/app/system-migrate.sh"
+    fi
+    echo "Installed version $current is already current or newer; system migration completed."
     exit 0
 fi
 test -f "$stage/app/rbwr/dist/index.html"

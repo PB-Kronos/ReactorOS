@@ -1,10 +1,18 @@
 #!/usr/bin/python3
 """Add ReactorOS per-user app filtering to its private GNOME Apps Menu copy."""
 from pathlib import Path
+import json
 import sys
 
 extension = Path(sys.argv[1])
 source = extension.read_text(encoding="utf-8")
+source = source.replace("text: _('Apps')", "text: _('Start')", 1)
+metadata_path = extension.parent / "metadata.json"
+metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+metadata["uuid"] = "reactoros-apps-menu@reactoros.local"
+metadata["name"] = "ReactorOS Start Menu"
+metadata["description"] = "Per-user ReactorOS application menu"
+metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 marker = "if (app.get_app_info().should_show())"
 replacement = "if (app.get_app_info().should_show() && reactorosAppIsAllowed(id))"
 if replacement not in source:

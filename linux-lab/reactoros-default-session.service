@@ -1,0 +1,13 @@
+[Unit]
+Description=Select the ReactorOS desktop session for newly installed accounts
+After=accounts-daemon.service
+Before=display-manager.service
+ConditionPathExists=!/var/lib/reactoros-session-default-configured
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/reactoros/reactoros-default-session.py
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

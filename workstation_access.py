@@ -156,6 +156,10 @@ def current_access():
         if (isinstance(app, str) and app.startswith("desktop:") and
             app.endswith(".desktop") and "/" not in app[8:] and "\\" not in app[8:])
     )
+    # Keep the policy editor available to administrators so they can recover
+    # from accidentally removing Settings or their own app launchers.
+    if "users:manage" in allowed:
+        visible_apps.add("menu-editor")
     allowed.intersection_update(PERMISSIONS)
     visible_apps = sorted(visible_apps)
     return {"name": account.pw_name, "roles": roles, "sudoGroup": sudo,

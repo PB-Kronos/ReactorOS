@@ -490,6 +490,13 @@
     if (permissions.includes("app:settings") && visibleMenuApps.has("settings")) {
       menu.append(button("Settings", () => showSettings(sudoGroup)));
     }
+    if (sudoGroup && permissions.includes("users:manage")) {
+      menu.append(button("Start Menu Editor", async () => {
+        showMenu(false);
+        try { await launchDesktop("menu-editor"); }
+        catch (error) { alert(`Could not open Start Menu Editor: ${error.message}`); }
+      }));
+    }
     menu.append(button("Sign Out", async () => {
       showMenu(false);
       if (!confirm("Sign out of ReactorOS? Save any open work first.")) return;

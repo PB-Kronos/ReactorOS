@@ -31,7 +31,10 @@ def launch(app):
 
 class Settings(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id="org.reactoros.Settings")
+        # Keep this utility a normal, independent GTK window even if a stale
+        # Settings process is still registered on the session bus.
+        super().__init__(application_id="org.reactoros.Settings",
+                         flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.operator = {"permissions": [], "sudoGroup": False}
         self.permissions = set(self.operator.get("permissions", []))
         self._install_theme()
@@ -113,6 +116,7 @@ class Settings(Gtk.Application):
         self._add_tab(notebook, "Software", update_controls)
         window.show_all()
         window.present()
+        self._log_message("Settings window presented")
 
     def _add_tab(self, notebook, name, controls):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -161,6 +165,13 @@ class Settings(Gtk.Application):
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "settings-launch.log"), "a", encoding="utf-8") as stream:
             stream.write(traceback.format_exc() + "\n")
+
+    def _log_message(self, message):
+        state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+        directory = os.path.join(state, "reactoros")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "settings-launch.log"), "a", encoding="utf-8") as stream:
+            stream.write(message + "\n")
 
     def _show_error(self, title, error):
         dialog = Gtk.MessageDialog(transient_for=None, modal=True,

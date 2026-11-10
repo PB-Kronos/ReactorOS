@@ -28,7 +28,7 @@ mkdir -p config/package-lists config/hooks/normal
 printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv sudo \
     gdm3 xserver-xorg xserver-xorg-input-libinput xserver-xorg-video-all \
     firmware-amd-graphics libgl1-mesa-dri polkitd pkexec gparted \
-    dbus-user-session gnome-session gnome-shell gnome-control-center \
+    accountsservice dbus-user-session gnome-session gnome-shell gnome-control-center \
     gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme \
     dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
     firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
@@ -42,13 +42,13 @@ cat > config/hooks/normal/050-reactoros-dconf.hook.chroot <<'EOF'
 #!/bin/sh
 set -eu
 apps_menu_source=/usr/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
-apps_menu_target=/opt/reactoros/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
+apps_menu_target=/usr/share/gnome-shell/extensions/reactoros-apps-menu@reactoros.local
 if [ -d "$apps_menu_source" ]; then
     install -d -m 0755 "$(dirname "$apps_menu_target")"
     cp -a "$apps_menu_source" "$apps_menu_target"
-    sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
     python3 /opt/reactoros/patch-apps-menu.py "$apps_menu_target/extension.js"
 fi
+systemctl enable reactoros-default-session.service
 systemctl enable NetworkManager.service
 dconf update
 EOF
@@ -88,6 +88,9 @@ install -m 0755 "$lab/patch-apps-menu.py" "$app/patch-apps-menu.py"
 cp -r "$lab/themes/ReactorOS95" "$app/themes/"
 cp -r "$lab/applications" "$app/share/"
 install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"
+install -m 0644 "$lab/reactoros-default-session.service" \
+    "$overlay/etc/systemd/system/reactoros-default-session.service"
+install -m 0644 "$lab/reactoros-default-session.py" "$app/reactoros-default-session.py"
 install -m 0755 "$lab/reactoros-update-from-session.sh" \
     "$overlay/usr/local/sbin/reactoros-update-from-session"
 install -m 0755 "$lab/reactoros-update.sh" "$app/reactoros-update.sh"
@@ -99,7 +102,7 @@ install -m 0644 "$lab/reactoros-gnome-shell.css" \
 printf '%s\n' 'user-db:reactoros' 'system-db:reactoros' > "$overlay/etc/dconf/profile/reactoros"
 cat > "$overlay/etc/dconf/db/reactoros.d/00-reactoros" <<'EOF'
 [org/gnome/shell]
-enabled-extensions=['apps-menu@gnome-shell-extensions.gcampax.github.com','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
+enabled-extensions=['reactoros-apps-menu@reactoros.local','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
 disable-user-extensions=false
 
 [org/gnome/mutter]

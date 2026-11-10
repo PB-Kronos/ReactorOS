@@ -25,7 +25,7 @@ DESKTOP_APPS = {
     "images": ["ristretto"],
     "browser": ["firefox-esr", "--no-remote"],
     "disk-management": ["/usr/sbin/gparted"],
-    "network": ["nm-connection-editor"],
+    "network": ["gnome-control-center", "wifi"],
     "audio-settings": ["pavucontrol"],
     # Mutter owns display layout in the native GNOME session (including Wayland).
     "display-settings": ["gnome-control-center", "display"],

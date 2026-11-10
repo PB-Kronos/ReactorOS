@@ -1,0 +1,62 @@
+@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained.css");
+
+* {
+  font-family: "MS Sans Serif", "DejaVu Sans", sans-serif;
+  font-size: 13px;
+  color: #000000;
+}
+
+window, dialog, .background {
+  background-color: #c0c0c0;
+  color: #000000;
+}
+
+headerbar {
+  min-height: 28px;
+  padding: 2px 4px;
+  background: #000080;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  border-radius: 0;
+}
+
+headerbar label { color: #ffffff; font-weight: bold; }
+
+button, splitbutton > button, menubutton > button {
+  background: #c0c0c0;
+  color: #000000;
+  border: 2px solid #ffffff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  border-radius: 0;
+  box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #808080;
+}
+
+button:active, button:checked {
+  border-color: #404040;
+  border-right-color: #ffffff;
+  border-bottom-color: #ffffff;
+  box-shadow: inset 1px 1px #808080;
+}
+
+entry, textview, listview, columnview, gridview {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #404040;
+  border-right-color: #ffffff;
+  border-bottom-color: #ffffff;
+  border-radius: 0;
+}
+
+popover contents, menu, menuitem, modelbutton {
+  background: #c0c0c0;
+  color: #000000;
+  border-radius: 0;
+}
+
+modelbutton:hover, row:selected, .selected {
+  background: #000080;
+  color: #ffffff;
+}

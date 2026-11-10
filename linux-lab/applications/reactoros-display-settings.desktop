@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Display Settings
+Comment=Configure display layout and resolution
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py display-settings
+Icon=video-display
+Categories=Settings;HardwareSettings;
+StartupNotify=true

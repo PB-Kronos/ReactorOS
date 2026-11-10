@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Image Viewer
+Comment=View local images
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py images
+Icon=applications-graphics
+Categories=Graphics;Viewer;
+StartupNotify=true

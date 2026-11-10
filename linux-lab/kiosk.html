@@ -384,7 +384,7 @@
   try {
     const response = await fetch("/api/operator", { cache: "no-store" });
     if (!response.ok) throw new Error("Debian session unavailable");
-    const { name, permissions, sudoGroup } = await response.json();
+    const { name, permissions, sudoGroup, visibleApps = [] } = await response.json();
     if (typeof name !== "string" || !name) throw new Error("Debian account unavailable");
     sessionStorage.setItem("reactoros-debian-operator", name);
     sessionStorage.setItem("reactoros-permissions", JSON.stringify(permissions));
@@ -406,17 +406,25 @@
       ["/supervisor", "supervisor"], ["/mainframe", "mainframe"], ["/manual", "manual"],
       ["/plant-tools.html?tool=database", "live-variables"], ["/plant-tools.html?tool=server", "events"],
     ]);
+    const visibleMenuApps = new Set(visibleApps);
     for (const [route, title] of programs) {
-      if (!permissions.includes("app:" + permissionByRoute.get(route))) {
+      const app = permissionByRoute.get(route);
+      if (!permissions.includes("app:" + app) || !visibleMenuApps.has(app)) {
         programs.delete(route);
         continue;
       }
       menu.append(button(title, () => openProgram(route)));
     }
+    if (permissions.includes("app:network") && visibleMenuApps.has("network")) {
+      menu.append(button("Wi-Fi & Network", async () => {
+        try { await launchDesktop("network"); }
+        catch (error) { alert(`Could not open Wi-Fi & Network: ${error.message}`); }
+      }));
+    }
     for (const [app, title] of Object.entries({
       files: "File Explorer", editor: "Text Editor", images: "Image Viewer", browser: "Internet",
     })) {
-      if (!permissions.includes("app:" + app)) continue;
+      if (!permissions.includes("app:" + app) || !visibleMenuApps.has(app)) continue;
       menu.append(button(title, async () => {
         showMenu(false);
         try {
@@ -424,6 +432,16 @@
         } catch (error) {
           alert(`Could not open ${title}: ${error.message}`);
         }
+      }));
+    }
+    for (const [app, title] of Object.entries({
+      "disk-management": "Disk Management", "audio-settings": "Sound Settings",
+      "display-settings": "Display Settings",
+    })) {
+      if (!permissions.includes("app:" + app) || !visibleMenuApps.has(app)) continue;
+      menu.append(button(title, async () => {
+        try { await launchDesktop(app); }
+        catch (error) { alert(`Could not open ${title}: ${error.message}`); }
       }));
     }
     for (const route of ["/reactor", "/"]) {
@@ -469,7 +487,9 @@
       try { await launchDesktop("update"); display.close(); }
       catch (error) { updateStatus.textContent = error.message; }
     };
-    menu.append(button("Settings", () => showSettings(sudoGroup)));
+    if (permissions.includes("app:settings") && visibleMenuApps.has("settings")) {
+      menu.append(button("Settings", () => showSettings(sudoGroup)));
+    }
     menu.append(button("Sign Out", async () => {
       showMenu(false);
       if (!confirm("Sign out of ReactorOS? Save any open work first.")) return;

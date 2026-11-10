@@ -6,8 +6,11 @@ GitHub release and bootable USB instructions are in [Releases and USB](RELEASES.
 Windows 95-style workstation. Its VirtualBox configuration and virtual
 disk live under `linux-lab/ReactorOS Kiosk Lab`. For installed systems, the
 ReactorOS desktop is a separately selectable GDM session built on GNOME Shell.
-It uses a dedicated dconf profile, application directory and theme, so the
-user's regular GNOME and KDE sessions keep their own settings and menus. Pick
+It uses a dedicated dconf profile, application directory and Win95-style GTK
+and Shell themes, so the user's regular GNOME and KDE sessions keep their own
+settings and menus. Its single categorized Start menu opens with the Super
+key; GNOME Overview shortcuts and hot corners are disabled only in this
+session. OS notification banners are quieted only in ReactorOS. Pick
 **ReactorOS Desktop** from GDM's session selector at sign-in. Mutter manages
 native movable windows and multi-monitor placement; the RBWR program opens
 maximized by default. The lab account is `operator` with the initial lab
@@ -35,8 +38,9 @@ sudo reboot
 ```
 
 The Settings window contains the device controls, account management,
-disk management, and software update actions, keeping those utilities out
-of the Start menu. Its audio section reports whether PipeWire is responding
+disk management, and software update actions. Wi-Fi, sound, and display
+controls are also available from the Start menu for accounts with permission.
+Its audio section reports whether PipeWire is responding
 and whether output devices are visible, and can restart the current user's
 PipeWire services. Sound Settings opens the mixer for choosing the correct
 output device, port, and volume. The update installs PipeWire's ALSA bridge
@@ -56,6 +60,10 @@ uses the Debian identity with the simulator's existing supervisor access.
 your own Debian password. It lists accounts, creates Debian users, resets
 passwords, assigns one or more built-in or custom ReactorOS roles, and
 manages the actual Debian sudo group. Role permissions are additive.
+The editor also has a per-account Start menu list; an app appears only when
+visibility is enabled and the account has permission to launch it. Menu
+overrides live in the ReactorOS session runtime directory, leaving ordinary
+GNOME and KDE menus unchanged.
 Unassigned accounts start as trainee, or admin if they already belong to
 Debian's sudo group. Reload the kiosk or sign in again to refresh Start.
 

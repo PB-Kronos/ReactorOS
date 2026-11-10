@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Wi-Fi & Network
+Comment=Connect to Wi-Fi and manage network connections
+Exec=gnome-control-center wifi
+Icon=network-wireless
+Categories=Settings;Network;
+StartupNotify=true

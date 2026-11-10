@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Text Editor
+Comment=Edit local text files
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py editor
+Icon=accessories-text-editor
+Categories=Utility;TextEditor;
+StartupNotify=true

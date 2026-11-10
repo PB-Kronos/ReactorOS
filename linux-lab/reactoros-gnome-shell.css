@@ -11,6 +11,22 @@
   padding: 2px 6px;
 }
 
+#panel #panelApplications {
+  color: #000000;
+  background-color: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #808080;
+  font-weight: bold;
+  padding: 2px 10px;
+}
+
+#panel #panelApplications:active {
+  border-color: #404040 #ffffff #ffffff #404040;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+}
+
 #panel .panel-button:hover,
 #panel .panel-button:focus {
   color: #000000;

@@ -97,7 +97,7 @@ Suites: trixie-security
 Components: main non-free-firmware
 ''')
 PY
-packages='dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant lxpolkit arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
+packages='dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant firmware-iwlwifi firmware-realtek firmware-atheros firmware-brcm80211 lxpolkit arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
 missing=''
 for package in $packages; do
     if ! dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then
@@ -142,9 +142,12 @@ cat > /etc/NetworkManager/conf.d/10-reactoros-managed.conf <<'EOF'
 managed=true
 EOF
 systemctl enable --now NetworkManager.service
+nmcli radio wifi on >/dev/null 2>&1 || true
 
 install -d -m 0755 /etc/dconf/profile /etc/dconf/db/reactoros.d \
+    /etc/dconf/db/reactoros.d/locks \
     /usr/share/xsessions /usr/share/themes/ReactorOS95/gnome-shell \
+    /usr/share/themes/ReactorOS95/gtk-3.0 /usr/share/themes/ReactorOS95/gtk-4.0 \
     /opt/reactoros/share/applications
 printf '%s\n' 'user-db:reactoros' 'system-db:reactoros' > /etc/dconf/profile/reactoros
 cat > /etc/dconf/db/reactoros.d/00-reactoros <<'EOF'
@@ -152,9 +155,20 @@ cat > /etc/dconf/db/reactoros.d/00-reactoros <<'EOF'
 enabled-extensions=['apps-menu@gnome-shell-extensions.gcampax.github.com','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
 disable-user-extensions=false
 
+[org/gnome/mutter]
+overlay-key=''
+
+[org/gnome/shell/keybindings]
+toggle-application-view=[]
+toggle-overview=[]
+
+[org/gnome/shell/extensions/apps-menu]
+apps-menu-toggle-menu=['Super_L']
+
 [org/gnome/shell/extensions/dash-to-panel]
 panel-position='BOTTOM'
 panel-size=34
+show-activities-button=false
 
 [org/gnome/shell/extensions/user-theme]
 name='ReactorOS95'
@@ -167,14 +181,43 @@ secondary-color='#008080'
 
 [org/gnome/desktop/interface]
 color-scheme='prefer-light'
-gtk-theme='Adwaita'
+gtk-theme='ReactorOS95'
 icon-theme='Adwaita'
+enable-hot-corners=false
+
+[org/gnome/desktop/notifications]
+show-banners=false
+show-in-lock-screen=false
+EOF
+cat > /etc/dconf/db/reactoros.d/locks/00-reactoros <<'EOF'
+/org/gnome/desktop/interface/gtk-theme
+/org/gnome/desktop/interface/enable-hot-corners
+/org/gnome/desktop/notifications/show-banners
+/org/gnome/desktop/notifications/show-in-lock-screen
+/org/gnome/mutter/overlay-key
+/org/gnome/shell/enabled-extensions
+/org/gnome/shell/keybindings/toggle-application-view
+/org/gnome/shell/keybindings/toggle-overview
+/org/gnome/shell/extensions/apps-menu/apps-menu-toggle-menu
+/org/gnome/shell/extensions/user-theme/name
 EOF
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 install -m 0644 "$script_dir/reactoros.desktop" /usr/share/xsessions/reactoros.desktop
 install -m 0644 "$script_dir/reactoros-gnome-shell.css" \
     /usr/share/themes/ReactorOS95/gnome-shell/gnome-shell.css
+install -m 0644 "$script_dir/themes/ReactorOS95/gtk-3.0/gtk.css" \
+    /usr/share/themes/ReactorOS95/gtk-3.0/gtk.css
+install -m 0644 "$script_dir/themes/ReactorOS95/gtk-4.0/gtk.css" \
+    /usr/share/themes/ReactorOS95/gtk-4.0/gtk.css
 install -m 0755 "$script_dir/reactoros-update-from-session.sh" \
     /usr/local/sbin/reactoros-update-from-session
 cp "$script_dir"/applications/*.desktop /opt/reactoros/share/applications/
+apps_menu_source=/usr/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
+apps_menu_target=/opt/reactoros/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
+if [ -d "$apps_menu_source" ]; then
+    install -d -m 0755 "$(dirname "$apps_menu_target")"
+    rm -rf -- "$apps_menu_target"
+    cp -a "$apps_menu_source" "$apps_menu_target"
+    sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
+fi
 dconf update

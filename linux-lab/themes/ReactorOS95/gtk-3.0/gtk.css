@@ -1,0 +1,79 @@
+* {
+  font-family: "MS Sans Serif", "DejaVu Sans", sans-serif;
+  font-size: 13px;
+  color: #000000;
+}
+
+window, dialog, notebook, notebook > header {
+  background-color: #c0c0c0;
+  color: #000000;
+}
+
+headerbar {
+  min-height: 28px;
+  padding: 2px 4px;
+  background-image: none;
+  background-color: #000080;
+  color: #ffffff;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+}
+
+headerbar label, headerbar button label { color: #ffffff; font-weight: bold; }
+
+button, combobox button, spinbutton button {
+  background-image: none;
+  background-color: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #808080;
+  padding: 3px 8px;
+}
+
+button:hover { background-color: #d6d6d6; }
+button:active, button:checked {
+  border-color: #404040 #ffffff #ffffff #404040;
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf;
+}
+
+entry, spinbutton, textview text, treeview.view, list, row {
+  background-color: #ffffff;
+  color: #000000;
+  border: 2px solid;
+  border-color: #404040 #ffffff #ffffff #404040;
+  border-radius: 0;
+}
+
+menu, menuitem, popover, popover contents {
+  background-color: #c0c0c0;
+  color: #000000;
+  border-radius: 0;
+}
+
+menuitem:hover, modelbutton:hover, row:selected, treeview.view:selected {
+  background-color: #000080;
+  color: #ffffff;
+}
+
+notebook > header tab {
+  background-color: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  padding: 4px 9px;
+}
+
+notebook > header tab:checked {
+  border-color: #404040 #ffffff #ffffff #404040;
+}
+
+scrollbar slider {
+  background-color: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+}
+
+progressbar progress { background-color: #000080; }

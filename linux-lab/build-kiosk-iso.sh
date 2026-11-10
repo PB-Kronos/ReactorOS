@@ -33,13 +33,22 @@ printf '%s\n' live-boot live-config live-config-systemd user-setup systemd-sysv 
     dconf-cli python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
     firefox-esr fonts-dejavu-core python3 python3-tk iproute2 procps \
     thunar mousepad ristretto xterm pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils \
-    network-manager network-manager-gnome wpasupplicant pavucontrol arandr x11-xserver-utils lxpolkit \
+    network-manager network-manager-gnome wpasupplicant firmware-iwlwifi firmware-realtek \
+    firmware-atheros firmware-brcm80211 pavucontrol arandr x11-xserver-utils lxpolkit \
     debian-installer-launcher \
     curl ca-certificates openssl \
     > config/package-lists/reactoros.list.chroot
 cat > config/hooks/normal/050-reactoros-dconf.hook.chroot <<'EOF'
 #!/bin/sh
 set -eu
+apps_menu_source=/usr/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
+apps_menu_target=/opt/reactoros/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
+if [ -d "$apps_menu_source" ]; then
+    install -d -m 0755 "$(dirname "$apps_menu_target")"
+    cp -a "$apps_menu_source" "$apps_menu_target"
+    sed -i "s/text: _('Apps')/text: _('Start')/" "$apps_menu_target/extension.js"
+fi
+systemctl enable NetworkManager.service
 dconf update
 EOF
 chmod 0755 config/hooks/normal/050-reactoros-dconf.hook.chroot
@@ -48,7 +57,10 @@ overlay=config/includes.chroot
 app="$overlay/opt/reactoros"
 mkdir -p "$app/rbwr" "$app/share/applications" "$overlay/usr/share/xsessions" \
     "$overlay/etc/dconf/profile" "$overlay/etc/dconf/db/reactoros.d" \
+    "$overlay/etc/dconf/db/reactoros.d/locks" \
     "$overlay/usr/share/themes/ReactorOS95/gnome-shell" "$overlay/usr/local/sbin"
+mkdir -p "$overlay/usr/share/themes/ReactorOS95/gtk-3.0" \
+    "$overlay/usr/share/themes/ReactorOS95/gtk-4.0" "$app/themes"
 mkdir -p "$overlay/etc/X11/xorg.conf.d" "$overlay/etc/NetworkManager/conf.d"
 cat > "$overlay/etc/X11/xorg.conf.d/90-reactoros-touchpad.conf" <<'EOF'
 Section "InputClass"
@@ -69,7 +81,9 @@ install -D -m 0644 "$lab/release-signing.pub" "$overlay/etc/reactoros/update-pub
 printf '%s\n' 'PB-Kronos/ReactorOS' > "$overlay/etc/reactoros/update-repo"
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" "$root/workstation_access.py" "$app/"
 cp -r "$root/rbwr/dist" "$app/rbwr/"
-cp "$lab/manage-users.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" "$app/"
+cp "$lab/manage-users.py" "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" \
+    "$lab/reactoros-launch-app.py" "$app/"
+cp -r "$lab/themes/ReactorOS95" "$app/themes/"
 cp -r "$lab/applications" "$app/share/"
 install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"
 install -m 0755 "$lab/reactoros-update-from-session.sh" \
@@ -86,9 +100,20 @@ cat > "$overlay/etc/dconf/db/reactoros.d/00-reactoros" <<'EOF'
 enabled-extensions=['apps-menu@gnome-shell-extensions.gcampax.github.com','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
 disable-user-extensions=false
 
+[org/gnome/mutter]
+overlay-key=''
+
+[org/gnome/shell/keybindings]
+toggle-application-view=[]
+toggle-overview=[]
+
+[org/gnome/shell/extensions/apps-menu]
+apps-menu-toggle-menu=['Super_L']
+
 [org/gnome/shell/extensions/dash-to-panel]
 panel-position='BOTTOM'
 panel-size=34
+show-activities-button=false
 
 [org/gnome/shell/extensions/user-theme]
 name='ReactorOS95'
@@ -101,9 +126,31 @@ secondary-color='#008080'
 
 [org/gnome/desktop/interface]
 color-scheme='prefer-light'
-gtk-theme='Adwaita'
+gtk-theme='ReactorOS95'
 icon-theme='Adwaita'
+enable-hot-corners=false
+
+[org/gnome/desktop/notifications]
+show-banners=false
+show-in-lock-screen=false
 EOF
+cat > "$overlay/etc/dconf/db/reactoros.d/locks/00-reactoros" <<'EOF'
+/org/gnome/desktop/interface/gtk-theme
+/org/gnome/desktop/interface/enable-hot-corners
+/org/gnome/desktop/notifications/show-banners
+/org/gnome/desktop/notifications/show-in-lock-screen
+/org/gnome/mutter/overlay-key
+/org/gnome/shell/enabled-extensions
+/org/gnome/shell/keybindings/toggle-application-view
+/org/gnome/shell/keybindings/toggle-overview
+/org/gnome/shell/extensions/apps-menu/apps-menu-toggle-menu
+/org/gnome/shell/extensions/user-theme/name
+EOF
+
+cp "$lab/themes/ReactorOS95/gtk-3.0/gtk.css" \
+    "$overlay/usr/share/themes/ReactorOS95/gtk-3.0/gtk.css"
+cp "$lab/themes/ReactorOS95/gtk-4.0/gtk.css" \
+    "$overlay/usr/share/themes/ReactorOS95/gtk-4.0/gtk.css"
 
 lb build
 mv live-image-amd64.hybrid.iso ReactorOS-amd64.iso

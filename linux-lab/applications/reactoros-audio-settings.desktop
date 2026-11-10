@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Sound Settings
+Comment=Configure audio devices and volume
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py audio-settings
+Icon=audio-volume-high
+Categories=Settings;HardwareSettings;
+StartupNotify=true

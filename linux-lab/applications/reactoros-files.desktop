@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=File Explorer
+Comment=Browse local ReactorOS files
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-launch-app.py files
+Icon=system-file-manager
+Categories=System;Utility;
+StartupNotify=true

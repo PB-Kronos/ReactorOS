@@ -28,6 +28,7 @@ mkdir -p "$package/DEBIAN" "$app/rbwr" "$app/share/applications" \
     "$package/usr/share/themes/ReactorOS95/gtk-4.0" \
     "$package/etc/dconf/profile" "$package/etc/dconf/db/reactoros.d" \
     "$package/etc/dconf/db/reactoros.d/locks" \
+    "$package/etc/reactoros" \
     "$package/usr/local/sbin" "$package/usr/lib/reactoros"
 
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" \
@@ -52,11 +53,14 @@ cp "$lab/reactoros.desktop" "$package/usr/share/xsessions/reactoros.desktop"
 cp "$lab/dconf-profile" "$package/etc/dconf/profile/reactoros"
 cp "$lab/dconf-defaults" "$package/etc/dconf/db/reactoros.d/00-reactoros"
 cp "$lab/dconf-locks" "$package/etc/dconf/db/reactoros.d/locks/00-reactoros"
+cp "$lab/release-signing.pub" "$package/etc/reactoros/update-public.pem"
+printf '%s\n' 'PB-Kronos/ReactorOS' > "$package/etc/reactoros/update-repo"
 cp "$lab/reactoros-update-from-session.sh" \
     "$package/usr/local/sbin/reactoros-update-from-session"
 cp "$lab/reactoros-legacy-update-from-session.sh" \
     "$package/usr/lib/reactoros/legacy-update"
 cp "$lab/reactoros-package-update.sh" "$package/usr/lib/reactoros/package-update"
+cp "$lab/reactoros-update.sh" "$package/usr/lib/reactoros/legacy-updater"
 
 if [ -n "$keyring" ]; then
     test -s "$keyring" || { echo "APT keyring not found: $keyring" >&2; exit 1; }
@@ -68,12 +72,15 @@ fi
 
 sed "s/@VERSION@/$package_version/" "$lab/debian-control.in" \
     > "$package/DEBIAN/control"
+printf '%s\n' '/etc/reactoros/update-public.pem' '/etc/reactoros/update-repo' \
+    > "$package/DEBIAN/conffiles"
 install -m 0755 "$lab/debian-postinst" "$package/DEBIAN/postinst"
 install -m 0755 "$lab/debian-postrm" "$package/DEBIAN/postrm"
 chmod 0755 "$app/kiosk-session.sh" "$app/system-migrate.sh" \
     "$app/reactoros-update.sh" "$app/reactoros-update-from-session.sh" \
     "$package/usr/local/sbin/reactoros-update-from-session" \
     "$package/usr/lib/reactoros/legacy-update" \
+    "$package/usr/lib/reactoros/legacy-updater" \
     "$package/usr/lib/reactoros/package-update"
 printf '%s\n' "$version" > "$app/VERSION"
 

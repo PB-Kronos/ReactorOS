@@ -2,6 +2,9 @@
 set -eu
 
 test "$(id -u)" -eq 0 || { echo 'Run this helper as root.' >&2; exit 1; }
+if [ -x /usr/lib/reactoros/legacy-updater ]; then
+    exec /usr/lib/reactoros/legacy-updater
+fi
 if [ -x /opt/reactoros/reactoros-update.sh ]; then
     install -m 0755 /opt/reactoros/reactoros-update.sh /usr/local/sbin/reactoros-update
 fi

@@ -45,7 +45,8 @@ class UpdateManager:
         )
         self.legacy_ready = all(Path(path).is_file() for path in (
             "/etc/reactoros/update-repo", "/etc/reactoros/update-public.pem",
-            "/usr/local/sbin/reactoros-update",
+        )) and any(Path(path).is_file() for path in (
+            "/usr/lib/reactoros/legacy-updater", "/usr/local/sbin/reactoros-update",
         ))
         self.available = []
         if self.package_ready:

@@ -1,14 +1,14 @@
 Package: reactoros-desktop
-Version: 1.1.35
+Version: 1.1.37
 Architecture: all
 Maintainer: PB-Kronos <noreply@github.com>
-Depends: python3, python3-gi, python3-tk, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gnome-menus, gnome-session, gnome-shell, gnome-control-center, dconf-cli, gnome-shell-extension-apps-menu, gnome-shell-extension-dash-to-panel, gnome-shell-extension-user-theme, pkexec, lxpolkit
+Depends: python3, python3-gi, python3-tk, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gnome-menus, gnome-session, gnome-shell, gnome-control-center, dconf-cli, gnome-shell-extension-apps-menu, gnome-shell-extension-dash-to-panel, gnome-shell-extension-user-theme, pkexec, lxpolkit, sudo
 Recommends: accountsservice, dbus-user-session, network-manager, network-manager-gnome, wpasupplicant, pipewire-audio, pipewire-alsa, pipewire-pulse, wireplumber, alsa-utils, pulseaudio-utils, pavucontrol, firefox-esr, thunar, mousepad, ristretto, xterm, curl, openssl, gparted, arandr
-Filename: pool/main/r/reactoros/reactoros-desktop_1.1.35_all.deb
-Size: 5986344
-MD5sum: 15f2a6070e55053325d04f068cd83d01
-SHA1: 53d54177fa5722be38b2771878e2f843a2ba5b59
-SHA256: 13d67e52367470b41580b3d918fcce3973449f43f10b102c1898408cc8d7beec
+Filename: pool/main/r/reactoros/reactoros-desktop_1.1.37_all.deb
+Size: 5988526
+MD5sum: b65a0ac1a35480daaed7126769ad82d8
+SHA1: 3fe57e25da73d948aeac1fecb8ec91dcf3708632
+SHA256: cb12e77919956e1dbaf3639659ae0964128eda62a242d925a12435b2fc5b0bfb
 Section: x11
 Priority: optional
 Description: Windows 95-style ReactorOS desktop session for Debian

@@ -19,7 +19,8 @@ session. OS notification banners are quieted only in ReactorOS. Pick
 **ReactorOS Desktop** from GDM's session selector at sign-in. Mutter manages
 native movable windows and multi-monitor placement; the RBWR program opens
 maximized by default. The lab account is `operator` with the initial lab
-password `live`.
+password `live`. ReactorOS does not change the selected desktop for other
+accounts; choose **ReactorOS Desktop** only when you want that session.
 The desktop reads the real Debian username from the local server.
 The Settings updater asks systemd-logind to sign out only the active ReactorOS
 session, then runs the signed update as a detached system service. It works

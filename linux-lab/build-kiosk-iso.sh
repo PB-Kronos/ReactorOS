@@ -48,7 +48,6 @@ if [ -d "$apps_menu_source" ]; then
     cp -a "$apps_menu_source" "$apps_menu_target"
     python3 /opt/reactoros/patch-apps-menu.py "$apps_menu_target/extension.js"
 fi
-systemctl enable reactoros-default-session.service
 systemctl enable NetworkManager.service
 dconf update
 EOF
@@ -88,8 +87,6 @@ install -m 0755 "$lab/patch-apps-menu.py" "$app/patch-apps-menu.py"
 cp -r "$lab/themes/ReactorOS95" "$app/themes/"
 cp -r "$lab/applications" "$app/share/"
 install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"
-install -m 0644 "$lab/reactoros-default-session.service" \
-    "$overlay/etc/systemd/system/reactoros-default-session.service"
 install -m 0644 "$lab/reactoros-default-session.py" "$app/reactoros-default-session.py"
 install -m 0755 "$lab/reactoros-update-from-session.sh" \
     "$overlay/usr/local/sbin/reactoros-update-from-session"

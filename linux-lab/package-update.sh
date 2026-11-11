@@ -15,7 +15,7 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
     "$root/workstation_access.py" "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" \
     "$lab/reactoros-webapp.py" \
     "$lab/reactoros-settings.py" "$lab/patch-apps-menu.py" "$lab/reactoros-default-session.py" \
-    "$lab/reactoros-default-session.service" "$lab/reactoros.desktop" "$lab/reactoros-gnome-shell.css" \
+    "$lab/reactoros.desktop" "$lab/reactoros-gnome-shell.css" \
     "$lab/reactoros-update-from-session.sh" "$lab/kiosk-session.sh" \
     "$lab/reactoros-legacy-update-from-session.sh" "$lab/reactoros-package-update.sh" \
     "$lab/reactoros-update-now.py" \

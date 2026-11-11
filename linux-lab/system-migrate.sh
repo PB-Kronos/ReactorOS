@@ -4,6 +4,13 @@ set -eu
 # Signed updates call this as root after verifying the complete update archive.
 test "$(id -u)" -eq 0
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+# Releases before v1.1.34 forced every account into ReactorOS through
+# AccountsService and a boot-time oneshot. Remove only that explicit override,
+# then retire the old service so the display manager respects its session menu.
+systemctl disable --now reactoros-default-session.service >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/reactoros-default-session.service
+systemctl daemon-reload >/dev/null 2>&1 || true
+python3 "$script_dir/reactoros-default-session.py"
 # Debian Installer may leave its installation DVD enabled as an APT source.
 # A ReactorOS installer disc has no Debian Release index, so that stale entry
 # makes every later apt-get update fail even when network mirrors are healthy.
@@ -257,10 +264,6 @@ cat > /etc/dconf/db/reactoros.d/locks/00-reactoros <<'EOF'
 /org/gnome/shell/extensions/user-theme/name
 EOF
 install -m 0644 "$script_dir/reactoros.desktop" /usr/share/xsessions/reactoros.desktop
-install -m 0644 "$script_dir/reactoros-default-session.service" \
-    /etc/systemd/system/reactoros-default-session.service
-systemctl enable reactoros-default-session.service
-python3 "$script_dir/reactoros-default-session.py"
 install -m 0644 "$script_dir/reactoros-gnome-shell.css" \
     /usr/share/themes/ReactorOS95/gnome-shell/gnome-shell.css
 install -m 0644 "$script_dir/themes/ReactorOS95/gtk-3.0/gtk.css" \

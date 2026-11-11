@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -132,16 +133,43 @@ class UpdateManager:
                 parent=self.root):
             return
         helper = "/usr/local/sbin/reactoros-update-from-session"
-        command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",
-                   "/usr/bin/systemd-run", "--unit=reactoros-kiosk-update", "--collect",
-                   helper, session_id, method]
+        systemd_run = ["/usr/bin/systemd-run", "--unit=reactoros-kiosk-update", "--collect",
+                       helper, session_id, method]
+        # PolicyKit supplies a normal desktop authentication prompt. Do not
+        # make the updater depend on xterm, which is only a recommended package
+        # and may be absent on minimal Debian installations.
+        if shutil.which("pkexec"):
+            command = ["pkexec", *systemd_run]
+        elif shutil.which("xterm") and shutil.which("sudo"):
+            command = ["xterm", "-hold", "-T", "ReactorOS Update", "-e", "sudo",
+                       *systemd_run]
+        else:
+            messagebox.showerror(
+                "ReactorOS Update",
+                "No desktop authorization prompt is available. Install PolicyKit (pkexec) "
+                "or xterm, then try again.", parent=self.root,
+            )
+            return
         try:
-            subprocess.Popen(command, start_new_session=True)
+            process = subprocess.Popen(command, start_new_session=True)
         except OSError as error:
             messagebox.showerror("ReactorOS Update", f"Could not start the updater: {error}",
                                  parent=self.root)
             return
-        self.root.destroy()
+        self._wait_for_authorization(process)
+
+    def _wait_for_authorization(self, process):
+        if process.poll() is None:
+            self.root.after(150, self._wait_for_authorization, process)
+            return
+        if process.returncode == 0:
+            self.root.destroy()
+            return
+        messagebox.showerror(
+            "ReactorOS Update",
+            "The update was not started. Check the authorization prompt or close it and "
+            "try again. The existing system has not been changed.", parent=self.root,
+        )
 
 
 def main():

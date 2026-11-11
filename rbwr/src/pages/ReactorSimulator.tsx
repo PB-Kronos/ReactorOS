@@ -1502,7 +1502,7 @@ export default function ReactorSimulator() {
     {
       id: "turbine-vac",
       label: "TURBINE / NO COND VAC",
-      active: isRunning && valveValue > 15 && condenserVacuum > 0.125,
+      active: isRunning && mainSteamInletOpen && valveValue > 15 && condenserVacuum > 0.125,
       priority: "red",
       tone: "warble",
       pan: "right",
@@ -3041,6 +3041,7 @@ export default function ReactorSimulator() {
     if (
       !rpsTripInhibit &&
       isRunning &&
+      mainSteamInletOpen &&
       valveValue > 15 &&
       condenserVacuum > 0.125
     ) {
@@ -3054,6 +3055,7 @@ export default function ReactorSimulator() {
     }
   }, [
     isRunning,
+    mainSteamInletOpen,
     valveValue,
     condenserVacuum,
     rolldownProtection,

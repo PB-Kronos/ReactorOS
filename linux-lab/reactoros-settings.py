@@ -1,205 +1,167 @@
 #!/usr/bin/python3
-"""One native settings hub for ReactorOS device, account and update controls."""
+"""Native Tk settings hub for ReactorOS workstation controls."""
 import json
 import os
 import subprocess
 import traceback
+import tkinter as tk
+from tkinter import messagebox, ttk
 import urllib.request
-
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk
 
 BASE = "http://127.0.0.1:18765"
 TOKEN = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
+BG = "#c0c0c0"
+BLUE = "#000080"
 
 
-def get_operator():
-    with urllib.request.urlopen(BASE + "/api/operator", timeout=3) as response:
-        return json.loads(response.read())
+def state_log(message=None, exception=None):
+    state = os.environ.get("REACTOROS_DATA_DIR") or os.path.join(
+        os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "reactoros")
+    os.makedirs(state, exist_ok=True)
+    with open(os.path.join(state, "settings-launch.log"), "a", encoding="utf-8") as stream:
+        if message:
+            stream.write(message + "\n")
+        if exception:
+            stream.write("".join(traceback.format_exception(exception)) + "\n")
+
+
+def request_json(path, payload=None, timeout=8):
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    headers = {"Accept": "application/json"}
+    if data is not None:
+        headers.update({
+            "Content-Type": "application/json",
+            "Origin": BASE,
+            "X-ReactorOS-Session": TOKEN,
+        })
+    request = urllib.request.Request(BASE + path, data=data, headers=headers)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def launch(app):
-    data = json.dumps({"app": app}).encode()
-    request = urllib.request.Request(BASE + "/api/desktop/launch", data=data, method="POST", headers={
-        "Content-Type": "application/json", "Origin": BASE,
-        "X-ReactorOS-Session": TOKEN,
-    })
-    with urllib.request.urlopen(request, timeout=6) as response:
-        return json.loads(response.read())
+    return request_json("/api/desktop/launch", {"app": app}, timeout=10)
 
 
 class Settings:
-    def __init__(self):
-        self.operator = {"permissions": [], "sudoGroup": False}
+    def __init__(self, root):
+        self.root = root
+        self.operator = request_json("/api/operator", timeout=4)
         self.permissions = set(self.operator.get("permissions", []))
-        self._install_theme()
+        self._style()
+        self._build()
 
-    def _install_theme(self):
-        provider = Gtk.CssProvider()
-        provider.load_from_data(b"""
-          window, notebook, notebook > header { background: #c0c0c0; color: #000; }
-          headerbar { background: #000080; color: #fff; border: 2px outset #fff;
-            border-radius: 0; min-height: 30px; }
-          headerbar label { color: #fff; font-weight: bold; }
-          button { color: #000; background: #c0c0c0; border: 2px outset #fff;
-            border-radius: 0; }
-          button:active { border-style: inset; }
-          notebook > header tab { background: #c0c0c0; border: 2px outset #fff;
-            border-radius: 0; padding: 5px 10px; }
-          notebook > header tab:checked { border-style: inset; }
-          separator { background: #808080; }
-        """)
-        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
-                                                  Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-
-    def do_activate(self):
+    def _style(self):
+        self.root.title("ReactorOS Settings")
+        self.root.geometry("760x590")
+        self.root.minsize(600, 430)
+        self.root.configure(bg=BG, padx=10, pady=10)
+        style = ttk.Style(self.root)
         try:
-            self.operator = get_operator()
-            self.permissions = set(self.operator.get("permissions", []))
-        except Exception as error:
-            self._log_start_error(error)
-            self._show_error("ReactorOS could not connect to its local service", error)
-            return
-        window = Gtk.Window()
-        window.set_title("ReactorOS Settings")
-        window.set_default_size(720, 650)
-        window.set_position(Gtk.WindowPosition.CENTER)
-        window.connect("destroy", Gtk.main_quit)
-        header = Gtk.HeaderBar(title="Settings")
-        header.set_show_close_button(True)
-        window.set_titlebar(header)
-        notebook = Gtk.Notebook()
-        notebook.set_border_width(10)
-        window.add(notebook)
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure("TFrame", background=BG)
+        style.configure("TLabel", background=BG, foreground="black")
+        style.configure("TNotebook", background=BG, borderwidth=2)
+        style.configure("TNotebook.Tab", background=BG, padding=(12, 6), relief="raised")
+        style.map("TNotebook.Tab", background=[("selected", BG)])
+        style.configure("Treeview", background="white", fieldbackground="white")
 
-        device_controls = []
-        for permission, title, detail, page in [
-            ("app:audio-settings", "Sound", "Audio output, input, volume and applications", "sound"),
-            ("app:network", "Network", "Wi-Fi and wired connections", "network"),
-            ("app:display-settings", "Displays", "Arrange monitors and set resolutions", "display"),
-        ]:
-            if permission in self.permissions:
-                device_controls.append((title, detail, lambda app=permission.split(":", 1)[1]: self._launch(app)))
-        if "app:audio-settings" in self.permissions:
-            device_controls.append(("System Sound Settings", "Open GNOME's full audio controls",
-                                   lambda: self._open_settings("sound")))
-            device_controls.append(("Restart audio services", "Restart this account's PipeWire services",
-                                   self._restart_audio))
-        device_controls.append(("More system settings", "Open GNOME Control Center",
-                                lambda: self._open_settings("")))
-        self._add_tab(notebook, "Devices", device_controls)
-        account_controls = []
+    def _build(self):
+        heading = tk.Frame(self.root, bg=BLUE, bd=2, relief="raised")
+        heading.pack(fill="x", pady=(0, 10))
+        tk.Label(heading, text="ReactorOS Settings", bg=BLUE, fg="white",
+                 font=("TkDefaultFont", 13, "bold"), anchor="w", padx=8, pady=5).pack(fill="x")
+        tk.Label(self.root, text=f"Signed in as {self.operator.get('name', 'unknown')}",
+                 bg=BG, anchor="w").pack(fill="x", pady=(0, 8))
+
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill="both", expand=True)
+        devices = self._tab(notebook, "Devices")
+        accounts = self._tab(notebook, "Accounts & Storage")
+        software = self._tab(notebook, "Software")
+
+        self._section(devices, "Sound", "Configure audio devices and volume.", "audio-settings")
+        self._section(devices, "Network", "Manage Wi-Fi and wired connections.", "network")
+        self._section(devices, "Displays", "Arrange monitors and change resolution.", "display-settings")
+        self._action(devices, "More system settings", "Open GNOME Control Center",
+                     lambda: self._open_control_center())
+
         if "users:manage" in self.permissions:
-            account_controls.append(("User Management", "Accounts, groups and ReactorOS roles",
-                                     lambda: self._launch("users")))
-            account_controls.append(("Start Menu Editor", "Choose installed apps for each user's Start menu",
-                                     lambda: self._launch("menu-editor")))
+            self._action(accounts, "User Management", "Manage Debian accounts and ReactorOS roles.",
+                         lambda: self._launch("users"))
+            self._action(accounts, "Start Menu Editor", "Choose which applications each account can see and run.",
+                         lambda: self._launch("menu-editor"))
         if "app:disk-management" in self.permissions:
-            account_controls.append(("Disk Management", "Inspect and manage disks and partitions",
-                                     lambda: self._launch("disk-management")))
-        self._add_tab(notebook, "Accounts & Storage", account_controls or [
-            ("No available controls", "Your account has no user or disk management permission.", lambda: None),
-        ])
+            self._section(accounts, "Disk Management", "Inspect disks and partitions.", "disk-management")
+        if not accounts.winfo_children():
+            self._action(accounts, "No available controls",
+                         "This account has no account or storage administration permission.", lambda: None)
 
-        update_controls = []
         if self.operator.get("sudoGroup"):
-            update_controls.append(("Install latest update", "Download and apply the latest signed system update",
-                                    lambda: self._launch("update")))
-        update_controls.append(("Check for updates", "Open the ReactorOS release page in the browser",
-                                lambda: subprocess.Popen(["firefox-esr", "--new-window",
-                                    "https://github.com/PB-Kronos/ReactorOS/releases/latest"],
-                                    start_new_session=True)))
-        self._add_tab(notebook, "Software", update_controls)
-        window.show_all()
-        window.present()
-        self._log_message("Settings window presented")
-        return True
+            self._action(software, "Install latest update", "Install the latest signed ReactorOS update.",
+                         lambda: self._launch("update"))
+        self._action(software, "Check for updates", "Open the ReactorOS releases page.",
+                     lambda: subprocess.Popen([
+                         "firefox-esr", "--new-window",
+                         "https://github.com/PB-Kronos/ReactorOS/releases/latest"],
+                         start_new_session=True))
 
-    def _add_tab(self, notebook, name, controls):
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_border_width(12)
-        for title, detail, callback in controls:
-            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-            description = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-            label = Gtk.Label(label=title, xalign=0)
-            label.get_style_context().add_class("title-4")
-            text = Gtk.Label(label=detail, xalign=0)
-            description.pack_start(label, False, False, 0)
-            description.pack_start(text, False, False, 0)
-            button = Gtk.Button(label="Open")
-            button.connect("clicked", lambda _button, action=callback: self._safe(action))
-            row.pack_start(description, True, True, 0)
-            row.pack_end(button, False, False, 0)
-            box.pack_start(row, False, False, 5)
-            box.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
-        notebook.append_page(box, Gtk.Label(label=name))
+        tk.Button(self.root, text="Close", command=self.root.destroy, bg=BG,
+                  relief="raised", bd=2, padx=16).pack(anchor="e", pady=(9, 0))
 
-    def _open_settings(self, page):
-        command = ["gnome-control-center"] + ([page] if page else [])
-        subprocess.Popen(command, start_new_session=True)
+    @staticmethod
+    def _tab(notebook, title):
+        frame = tk.Frame(notebook, bg=BG, padx=12, pady=12)
+        notebook.add(frame, text=title)
+        return frame
+
+    def _section(self, parent, title, detail, app):
+        if f"app:{app}" not in self.permissions:
+            return
+        self._action(parent, title, detail, lambda: self._launch(app))
+
+    def _action(self, parent, title, detail, callback):
+        row = tk.Frame(parent, bg=BG, bd=1, relief="ridge", padx=10, pady=9)
+        row.pack(fill="x", pady=(0, 8))
+        text = tk.Frame(row, bg=BG)
+        text.pack(side="left", fill="x", expand=True)
+        tk.Label(text, text=title, bg=BG, font=("TkDefaultFont", 10, "bold"),
+                 anchor="w").pack(fill="x")
+        tk.Label(text, text=detail, bg=BG, anchor="w", justify="left", wraplength=470
+                 ).pack(fill="x", pady=(3, 0))
+        tk.Button(row, text="Open", command=lambda: self._safe(callback), bg=BG,
+                  relief="raised", bd=2, padx=12).pack(side="right", padx=(10, 0))
 
     def _launch(self, app):
         launch(app)
 
-    def _restart_audio(self):
-        data = json.dumps({}).encode()
-        request = urllib.request.Request(BASE + "/api/desktop/audio/restart", data=data, method="POST", headers={
-            "Content-Type": "application/json", "Origin": BASE,
-            "X-ReactorOS-Session": TOKEN,
-        })
-        with urllib.request.urlopen(request, timeout=15):
-            pass
+    def _open_control_center(self):
+        subprocess.Popen(["gnome-control-center"], start_new_session=True)
 
     def _safe(self, callback):
         try:
             callback()
         except Exception as error:
-            self._show_error("Could not open setting", error)
+            state_log(exception=error)
+            messagebox.showerror("ReactorOS Settings", str(error), parent=self.root)
 
-    def _log_start_error(self, error):
-        state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
-        directory = os.path.join(state, "reactoros")
-        os.makedirs(directory, exist_ok=True)
-        with open(os.path.join(directory, "settings-launch.log"), "a", encoding="utf-8") as stream:
-            stream.write(traceback.format_exc() + "\n")
 
-    def _log_message(self, message):
-        state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
-        directory = os.path.join(state, "reactoros")
-        os.makedirs(directory, exist_ok=True)
-        with open(os.path.join(directory, "settings-launch.log"), "a", encoding="utf-8") as stream:
-            stream.write(message + "\n")
-
-    def _show_error(self, title, error):
-        dialog = Gtk.MessageDialog(transient_for=None, modal=True,
-            message_type=Gtk.MessageType.ERROR, buttons=Gtk.ButtonsType.CLOSE,
-            text=title)
-        dialog.format_secondary_text(str(error))
-        dialog.run()
-        dialog.destroy()
+def main():
+    try:
+        root = tk.Tk()
+        Settings(root)
+        state_log("Settings window constructed")
+        root.mainloop()
+    except Exception as error:
+        state_log(exception=error)
+        try:
+            messagebox.showerror("ReactorOS Settings could not start", str(error))
+        except tk.TclError:
+            print(f"ReactorOS Settings could not start: {error}", flush=True)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
-    settings = None
-    try:
-        settings = Settings()
-        if settings.do_activate():
-            Gtk.main()
-        raise SystemExit(0)
-    except Exception as error:
-        print("ReactorOS Settings:", error)
-        try:
-            if settings is not None:
-                settings._log_start_error(error)
-        except Exception:
-            pass
-        try:
-            dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR,
-                buttons=Gtk.ButtonsType.CLOSE, text="ReactorOS Settings could not start")
-            dialog.format_secondary_text(str(error))
-            dialog.run()
-            dialog.destroy()
-        except Exception:
-            pass
-        raise SystemExit(1)
+    main()

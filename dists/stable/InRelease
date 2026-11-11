@@ -4,31 +4,31 @@ Hash: SHA256
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Wed, 11 Nov 2026 17:10:00 +0000
+Date: Wed, 11 Nov 2026 17:17:45 +0000
 Description: ReactorOS desktop packages
 Label: ReactorOS
 Origin: PB-Kronos ReactorOS
 Suite: stable
 MD5Sum:
- 3d0542213008108f85d6d7ba6a86e452              192 Release
- 6eb030377dd7233be785e7793d32ca4e             1220 main/binary-amd64/Packages
- 9a01431cb5bf23355934f8d5d4ff82ad              716 main/binary-amd64/Packages.gz
+ 0b649a90f6be010061b91aaf4d525b81              192 Release
+ 042a8ad92b0a22f85bc0d8d38a5e200d             1235 main/binary-amd64/Packages
+ 4fd56ba140edb22859f66049e5e1d69e              724 main/binary-amd64/Packages.gz
 SHA1:
- 4766d6d9fabe853aeef3f3d4f68af6b1b8c2ff63              192 Release
- 5e058241faaf528adfda537164034874e4abf037             1220 main/binary-amd64/Packages
- b247d09a54fabf6900bfaaef4b3b2b952420ac98              716 main/binary-amd64/Packages.gz
+ 684c163f3f8500c077fc6b5b5cf39ec21a5b40ba              192 Release
+ d668585b5b0f2f962e13ce7a9271c9ffd7409158             1235 main/binary-amd64/Packages
+ 7e597115e64a864709a684801da8e63795d4c709              724 main/binary-amd64/Packages.gz
 SHA256:
- cdf5f10e1e4d369ea1709332acc4ba518b0c0403edfd9725059c8481d1a45b17              192 Release
- c658ed1eea44b0825e8c7aad6d4a9bbe16633cb834d2ed5b2968b925981677cb             1220 main/binary-amd64/Packages
- 0ad1cba0e1c6f285687390c91a407691f750096469c872fd6f37d41e2b6dddb0              716 main/binary-amd64/Packages.gz
+ a660437515d37993dbaac7753b6a109f13d7c8ae0e5ddc9710bf90c82f5f50e6              192 Release
+ 83ff738228f38590f5288feb41761024e9ee84ed73233778b3ff908941d6cfa0             1235 main/binary-amd64/Packages
+ 248cd7ce1815df03538070ed749ff91f60b47c36483a874f663223aeead032d7              724 main/binary-amd64/Packages.gz
 SHA512:
- e85bd1f334e24d1269db333b35649d27b57caa031a15e3f3fc872216d502c3dd0346fcecf8ee4d02c5320742b2700444c3ff82deb2f9475a678b00ad4d949b45              192 Release
- 29081620e4a973ebc3ccd698e0c20d08e86b7e279fbdd06a5c5de477bfce46e44da5a8534f8b38712b92454df7683487841381760ec060275eb43500f86dddb6             1220 main/binary-amd64/Packages
- 622c7d3f75c82ff36b4b88bcad72bdf31029839023a49031a8dd666bfe58b46db394d59e871f55834abe0adc925ead2824b56324b5e6f5de8cf28993c3b5d89c              716 main/binary-amd64/Packages.gz
+ 05061eb9533cd565689a22b61952863cd032d8678d45babb682689ef877c186b5c1806db5a166a921a5ee02b8af507ca5a082817c21a466a0cbe74a1197b674b              192 Release
+ 57ca6dd8d2ce2cc0c661a5afbab6ed7034f70ed793591d15987fc73ae40c2e2c4eb415392aeabbe1fac60de0cdb70d01946434edaa6bc5c965d297c5747f1ea4             1235 main/binary-amd64/Packages
+ 888500ffd6a0aff9fa740d8dd0743db2d626bbe6b1ff45b9441f5067806a31d79f7e67ebde58f47ca230357c8c39532d15a43c3dfca6cd778319226685abcab3              724 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iHUEARYIAB0WIQSKpVov2/Czq5ynuXRmK9X5CvAuhAUCavShaAAKCRBmK9X5CvAu
-hHg6APsFFslEZ5J9RuB2OcMPrhXMW3YKhoU8642IgaB9GKFqIgEAvfxXbgZ00q5C
-R/StE8o0vqdezwYVhqjlpg99kmSbYwI=
-=Ac1l
+iHUEARYIAB0WIQSKpVov2/Czq5ynuXRmK9X5CvAuhAUCavSjOQAKCRBmK9X5CvAu
+hFuUAP0VJL9uqwHHw8H6UxgW5AlD8UtjNXRq2XWK/K7M5PLdjQEAkgfVzWadbxF1
+BfB+qNrGR6eT5RO99hRuTLUtU6j9Xw4=
+=4VEj
 -----END PGP SIGNATURE-----

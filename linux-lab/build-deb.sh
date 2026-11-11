@@ -29,7 +29,8 @@ mkdir -p "$package/DEBIAN" "$app/rbwr" "$app/share/applications" \
     "$package/etc/dconf/profile" "$package/etc/dconf/db/reactoros.d" \
     "$package/etc/dconf/db/reactoros.d/locks" \
     "$package/etc/reactoros" \
-    "$package/usr/local/sbin" "$package/usr/lib/reactoros"
+    "$package/usr/local/sbin" "$package/usr/lib/reactoros" \
+    "$package/usr/lib/systemd/system"
 
 cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_programs.py" \
     "$root/workstation_access.py" "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" \

@@ -35,6 +35,9 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
     "$root/workstation_access.py" "$lab/manage-users.py" "$lab/reactoros-menu-editor.py" \
     "$lab/reactoros-webapp.py" "$lab/reactoros-settings.py" "$lab/patch-apps-menu.py" \
     "$lab/reactoros-default-session.py" "$lab/reactoros-update-now.py" \
+    "$lab/reactoros-update-autologin.py" "$lab/clear-update-autologin" \
+    "$lab/reactoros-update-autologin-cleanup.service" \
+    "$lab/reactoros-update-autologin-cleanup.timer" \
     "$lab/reactoros-update-from-session.sh" "$lab/kiosk-session.sh" \
     "$lab/reactoros-launch-app.py" "$lab/reactoros-gnome-shell.css" \
     "$lab/reactoros-legacy-update-from-session.sh" \
@@ -61,6 +64,14 @@ cp "$lab/reactoros-legacy-update-from-session.sh" \
     "$package/usr/lib/reactoros/legacy-update"
 cp "$lab/reactoros-package-update.sh" "$package/usr/lib/reactoros/package-update"
 cp "$lab/reactoros-update.sh" "$package/usr/lib/reactoros/legacy-updater"
+install -m 0644 "$lab/reactoros-update-autologin.py" \
+    "$package/usr/lib/reactoros/update-autologin.py"
+install -m 0755 "$lab/clear-update-autologin" \
+    "$package/usr/lib/reactoros/clear-update-autologin"
+install -m 0644 "$lab/reactoros-update-autologin-cleanup.service" \
+    "$package/usr/lib/systemd/system/reactoros-update-autologin-cleanup.service"
+install -m 0644 "$lab/reactoros-update-autologin-cleanup.timer" \
+    "$package/usr/lib/systemd/system/reactoros-update-autologin-cleanup.timer"
 
 if [ -n "$keyring" ]; then
     test -s "$keyring" || { echo "APT keyring not found: $keyring" >&2; exit 1; }
@@ -81,7 +92,8 @@ chmod 0755 "$app/kiosk-session.sh" "$app/system-migrate.sh" \
     "$package/usr/local/sbin/reactoros-update-from-session" \
     "$package/usr/lib/reactoros/legacy-update" \
     "$package/usr/lib/reactoros/legacy-updater" \
-    "$package/usr/lib/reactoros/package-update"
+    "$package/usr/lib/reactoros/package-update" \
+    "$package/usr/lib/reactoros/clear-update-autologin"
 printf '%s\n' "$version" > "$app/VERSION"
 
 dpkg-deb --build --root-owner-group "$package" \

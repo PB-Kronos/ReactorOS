@@ -19,12 +19,16 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
     "$lab/reactoros-update-from-session.sh" "$lab/kiosk-session.sh" \
     "$lab/reactoros-legacy-update-from-session.sh" "$lab/reactoros-package-update.sh" \
     "$lab/reactoros-update-now.py" \
+    "$lab/reactoros-update-autologin.py" "$lab/clear-update-autologin" \
+    "$lab/reactoros-update-autologin-cleanup.service" \
+    "$lab/reactoros-update-autologin-cleanup.timer" \
     "$lab/system-migrate.sh" "$lab/reactoros-update.sh" "$lab/reactoros-launch-app.py" "$stage/"
 mkdir -p "$stage/applications"
 cp "$lab"/applications/*.desktop "$stage/applications/"
 cp "$lab"/applications/*.desktop "$stage/share/applications/"
 cp -r "$lab/themes/ReactorOS95" "$stage/themes/"
-chmod 0755 "$stage/system-migrate.sh" "$stage/reactoros-update.sh"
+chmod 0755 "$stage/system-migrate.sh" "$stage/reactoros-update.sh" \
+    "$stage/clear-update-autologin"
 cp -r "$root/rbwr/dist" "$stage/rbwr/"
 cp "$lab/kiosk.html" "$lab/plant-tools.html" "$stage/rbwr/dist/"
 printf '%s\n' "$version" > "$stage/VERSION"

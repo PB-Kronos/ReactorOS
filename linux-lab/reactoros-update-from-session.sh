@@ -12,6 +12,12 @@ case "$method" in
     *) echo 'Update method must be auto, package, or legacy.' >&2; exit 2 ;;
 esac
 
+session_user=$(loginctl show-session "$session_id" --property=Name --value 2>/dev/null || true)
+if [ -z "$session_user" ] || ! getent passwd "$session_user" >/dev/null 2>&1; then
+    echo "Could not resolve the requesting account for session $session_id; automatic return login will be skipped."
+    session_user=''
+fi
+
 exec 9>/run/lock/reactoros-update-launch.lock
 flock -n 9 || { echo 'Another ReactorOS update is already starting.' >&2; exit 1; }
 exec >/run/reactoros-update-result 2>&1
@@ -44,7 +50,43 @@ if [ "$method" = auto ]; then
     fi
 fi
 
+update_status=0
 case "$method" in
-    package) exec /usr/lib/reactoros/package-update ;;
-    legacy) exec /usr/lib/reactoros/legacy-update ;;
+    package) /usr/lib/reactoros/package-update || update_status=$? ;;
+    legacy) /usr/lib/reactoros/legacy-update || update_status=$? ;;
 esac
+
+other_graphical_session=0
+for candidate in $(loginctl list-sessions --no-legend --no-pager 2>/dev/null | awk '{print $1}'); do
+    [ "$candidate" = "$session_id" ] && continue
+    candidate_class=$(loginctl show-session "$candidate" --property=Class --value 2>/dev/null || true)
+    candidate_seat=$(loginctl show-session "$candidate" --property=Seat --value 2>/dev/null || true)
+    candidate_active=$(loginctl show-session "$candidate" --property=Active --value 2>/dev/null || true)
+    candidate_type=$(loginctl show-session "$candidate" --property=Type --value 2>/dev/null || true)
+    if [ "$candidate_class" = user ] && [ -n "$candidate_seat" ] && \
+            [ "$candidate_active" = yes ] && \
+            { [ "$candidate_type" = x11 ] || [ "$candidate_type" = wayland ]; }; then
+        other_graphical_session=1
+        break
+    fi
+done
+
+if [ "$other_graphical_session" -eq 1 ]; then
+    echo 'Another graphical user session is active; leaving it untouched. Automatic return login is skipped.'
+elif [ -n "$session_user" ] && [ -x /usr/lib/reactoros/clear-update-autologin ] && \
+        [ -f /usr/lib/reactoros/update-autologin.py ]; then
+    echo "Preparing one-time automatic return login for $session_user."
+    if /usr/bin/python3 /usr/lib/reactoros/update-autologin.py prepare "$session_user"; then
+        systemctl enable --now reactoros-update-autologin-cleanup.timer || \
+            echo 'Could not arm automatic return-login cleanup; the account login hook remains available.'
+        if systemctl restart display-manager.service; then
+            echo "Display manager restarted for the one-time return login to $session_user."
+        else
+            echo 'Could not restart the display manager; return to the sign-in screen and log in manually.'
+        fi
+    else
+        echo 'Automatic return login could not be configured; return to the sign-in screen and log in manually.'
+    fi
+fi
+
+exit "$update_status"

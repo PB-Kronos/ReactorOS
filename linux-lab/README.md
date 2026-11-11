@@ -23,8 +23,12 @@ password `live`. ReactorOS does not change the selected desktop for other
 accounts; choose **ReactorOS Desktop** only when you want that session.
 The desktop reads the real Debian username from the local server.
 The Settings updater asks systemd-logind to sign out only the active ReactorOS
-session, then runs the signed update as a detached system service. It works
-with GDM and LightDM without stopping the display manager for other users.
+session, then runs the signed update as a detached system service. After the
+update, it briefly configures a one-time return login for the same Debian
+account. It restores the previous display-manager configuration at that
+account's next ReactorOS login, with a short timeout fallback. If another
+graphical user session is active, it leaves that display manager untouched and
+requires a manual sign-in instead.
 The session writes startup diagnostics to
 `~/.local/state/reactoros/gnome-session.log` and
 `~/.local/state/reactoros/local-server.log` if a desktop session fails to start.

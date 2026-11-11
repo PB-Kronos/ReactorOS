@@ -7,6 +7,16 @@ case "${1:-}" in
         rm -f /etc/systemd/system/reactoros-default-session.service
         systemctl daemon-reload >/dev/null 2>&1 || true
         python3 /opt/reactoros/reactoros-default-session.py
+        install -d -m 0755 /usr/lib/reactoros /usr/lib/systemd/system
+        install -m 0644 /opt/reactoros/reactoros-update-autologin.py \
+            /usr/lib/reactoros/update-autologin.py
+        install -m 0755 /opt/reactoros/clear-update-autologin \
+            /usr/lib/reactoros/clear-update-autologin
+        install -m 0644 /opt/reactoros/reactoros-update-autologin-cleanup.service \
+            /usr/lib/systemd/system/reactoros-update-autologin-cleanup.service
+        install -m 0644 /opt/reactoros/reactoros-update-autologin-cleanup.timer \
+            /usr/lib/systemd/system/reactoros-update-autologin-cleanup.timer
+        systemctl daemon-reload
         extension_source=/usr/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
         extension_target=/usr/share/gnome-shell/extensions/reactoros-apps-menu@reactoros.local
         if [ -d "$extension_source" ]; then

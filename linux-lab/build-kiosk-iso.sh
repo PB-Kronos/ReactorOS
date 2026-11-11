@@ -90,6 +90,14 @@ install -m 0755 "$lab/system-migrate.sh" "$app/system-migrate.sh"
 install -m 0644 "$lab/reactoros-default-session.py" "$app/reactoros-default-session.py"
 install -m 0755 "$lab/reactoros-update-from-session.sh" \
     "$overlay/usr/local/sbin/reactoros-update-from-session"
+install -D -m 0644 "$lab/reactoros-update-autologin.py" \
+    "$overlay/usr/lib/reactoros/update-autologin.py"
+install -m 0755 "$lab/clear-update-autologin" \
+    "$overlay/usr/lib/reactoros/clear-update-autologin"
+install -D -m 0644 "$lab/reactoros-update-autologin-cleanup.service" \
+    "$overlay/usr/lib/systemd/system/reactoros-update-autologin-cleanup.service"
+install -m 0644 "$lab/reactoros-update-autologin-cleanup.timer" \
+    "$overlay/usr/lib/systemd/system/reactoros-update-autologin-cleanup.timer"
 install -m 0755 "$lab/reactoros-update.sh" "$app/reactoros-update.sh"
 cp "$lab/kiosk.html" "$lab/plant-tools.html" "$app/rbwr/dist/"
 cp "$lab/kiosk-session.sh" "$app/"

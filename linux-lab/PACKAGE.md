@@ -27,9 +27,12 @@ not an AUR, Fedora, or universal Linux package.
 ## Update
 
 The ReactorOS Settings window and Start menu both include **ReactorOS Update**.
-It selects APT package updates by default, signs out only the ReactorOS
-desktop, installs the package, and returns to the sign-in screen. If both
-updaters are available, the Update Manager also offers the signed legacy
+It selects APT package updates by default, signs out the requesting ReactorOS
+session, installs the package, then signs that same account back in once. The
+temporary automatic-login setting is cleared at the next ReactorOS login or
+expires shortly afterwards. If another graphical user session is active, the
+display manager is left alone and the account must sign back in manually. If
+both updaters are available, the Update Manager also offers the signed legacy
 archive updater as a recovery choice.
 
 From a terminal, update ReactorOS alone with:

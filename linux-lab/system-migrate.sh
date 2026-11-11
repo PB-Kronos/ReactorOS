@@ -159,7 +159,7 @@ Components: main non-free-firmware
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 ''')
 PY
-packages='accountsservice dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant firmware-iwlwifi firmware-realtek firmware-atheros firmware-brcm80211 pkexec lxpolkit arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi python3-tk gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
+packages='accountsservice dbus-user-session pipewire-audio pipewire-alsa pipewire-pulse wireplumber alsa-utils pulseaudio-utils pavucontrol network-manager network-manager-gnome wpasupplicant firmware-iwlwifi firmware-realtek firmware-atheros firmware-brcm80211 pkexec lxpolkit sudo arandr x11-xserver-utils gnome-session gnome-shell gnome-control-center gnome-shell-extension-apps-menu gnome-shell-extension-dash-to-panel gnome-shell-extension-user-theme dconf-cli python3-gi python3-tk gir1.2-gtk-3.0 gir1.2-webkit2-4.1'
 missing=''
 for package in $packages; do
     if ! dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then
@@ -273,6 +273,15 @@ install -m 0644 "$script_dir/themes/ReactorOS95/gtk-4.0/gtk.css" \
 install -m 0755 "$script_dir/reactoros-update-from-session.sh" \
     /usr/local/sbin/reactoros-update-from-session
 install -d -m 0755 /usr/lib/reactoros
+install -m 0644 "$script_dir/reactoros-update-autologin.py" \
+    /usr/lib/reactoros/update-autologin.py
+install -m 0755 "$script_dir/clear-update-autologin" \
+    /usr/lib/reactoros/clear-update-autologin
+install -m 0644 "$script_dir/reactoros-update-autologin-cleanup.service" \
+    /usr/lib/systemd/system/reactoros-update-autologin-cleanup.service
+install -m 0644 "$script_dir/reactoros-update-autologin-cleanup.timer" \
+    /usr/lib/systemd/system/reactoros-update-autologin-cleanup.timer
+systemctl daemon-reload
 install -m 0755 "$script_dir/reactoros-package-update.sh" \
     /usr/lib/reactoros/package-update
 install -m 0755 "$script_dir/reactoros-legacy-update-from-session.sh" \

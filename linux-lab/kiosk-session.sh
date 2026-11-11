@@ -3,6 +3,11 @@ set -eu
 
 state="${XDG_STATE_HOME:-$HOME/.local/state}/reactoros"
 mkdir -p "$state/firefox"
+if [ -r /run/reactoros-update-autologin-user ] && \
+        [ "$(cat /run/reactoros-update-autologin-user)" = "$(id -un)" ] && \
+        [ -x /usr/lib/reactoros/clear-update-autologin ]; then
+    sudo -n /usr/lib/reactoros/clear-update-autologin >/dev/null 2>&1 || true
+fi
 if ! grep -Fqx 'user_pref("media.autoplay.default", 0);' "$state/firefox/user.js" 2>/dev/null; then
     printf '\nuser_pref("media.autoplay.default", 0);\n' >> "$state/firefox/user.js"
 fi

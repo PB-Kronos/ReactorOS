@@ -1,0 +1,6 @@
+[Unit]
+Description=Clear the one-time ReactorOS update login handoff
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/lib/reactoros/update-autologin.py timeout

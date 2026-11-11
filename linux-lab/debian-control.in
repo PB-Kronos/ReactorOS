@@ -4,7 +4,7 @@ Section: x11
 Priority: optional
 Architecture: all
 Maintainer: PB-Kronos <noreply@github.com>
-Depends: python3, python3-gi, python3-tk, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gnome-menus, gnome-session, gnome-shell, gnome-control-center, dconf-cli, gnome-shell-extension-apps-menu, gnome-shell-extension-dash-to-panel, gnome-shell-extension-user-theme, pkexec, lxpolkit
+Depends: python3, python3-gi, python3-tk, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gnome-menus, gnome-session, gnome-shell, gnome-control-center, dconf-cli, gnome-shell-extension-apps-menu, gnome-shell-extension-dash-to-panel, gnome-shell-extension-user-theme, pkexec, lxpolkit, sudo
 Recommends: accountsservice, dbus-user-session, network-manager, network-manager-gnome, wpasupplicant, pipewire-audio, pipewire-alsa, pipewire-pulse, wireplumber, alsa-utils, pulseaudio-utils, pavucontrol, firefox-esr, thunar, mousepad, ristretto, xterm, curl, openssl, gparted, arandr
 Description: Windows 95-style ReactorOS desktop session for Debian
  A selectable desktop session and local workstation applications for Debian.

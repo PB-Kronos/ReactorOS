@@ -1,0 +1,10 @@
+[Unit]
+Description=Expire the one-time ReactorOS update login handoff
+
+[Timer]
+OnCalendar=*-*-* *:0/2:00
+Persistent=true
+Unit=reactoros-update-autologin-cleanup.service
+
+[Install]
+WantedBy=timers.target

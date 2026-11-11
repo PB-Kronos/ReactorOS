@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://raw.githubusercontent.com/PB-Kronos/ReactorOS/reactoros-apt
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/reactoros-archive-keyring.gpg

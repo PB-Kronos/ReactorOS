@@ -12,6 +12,7 @@ APP_PERMISSIONS = {f"app:{name}" for name in PROGRAMS} | {
     "app:files", "app:editor", "app:images", "app:browser", "app:disk-management",
     "app:network", "app:audio-settings", "app:display-settings",
     "app:live-variables", "app:events",
+    "app:update",
 }
 PERMISSIONS = APP_PERMISSIONS | {"database:edit", "users:manage", "terminal:execute"}
 BASIC = {"app:greeting", "app:manual", "app:status-desk", "app:settings", "app:network", "app:audio-settings", "app:display-settings"}
@@ -26,6 +27,7 @@ MENU_APPS = {
     "events": ("app:events", "Server Event Log", "reactoros-events.desktop"),
     "menu-editor": ("users:manage", "Start Menu Editor", "reactoros-menu-editor.desktop"),
     "settings": ("app:settings", "ReactorOS Settings", "reactoros-settings.desktop"),
+    "update": ("app:update", "ReactorOS Update", "reactoros-update.desktop"),
     "network": ("app:network", "Wi-Fi & Network", "reactoros-network.desktop"),
     "files": ("app:files", "File Explorer", "reactoros-files.desktop"),
     "editor": ("app:editor", "Text Editor", "reactoros-editor.desktop"),
@@ -128,7 +130,7 @@ def current_access():
     if sudo:
         # Sudo accounts can administer ReactorOS account and menu policy even
         # when their explicitly selected ReactorOS role is more restrictive.
-        permissions.update({"users:manage", "terminal:execute"})
+        permissions.update({"users:manage", "terminal:execute", "app:update"})
     else:
         permissions.difference_update({"users:manage", "terminal:execute"})
     allowed = permissions & PERMISSIONS

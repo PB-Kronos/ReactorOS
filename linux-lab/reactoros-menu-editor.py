@@ -26,7 +26,7 @@ def role_permissions(user, policy):
     for role in roles:
         permissions.update(DEFAULT_ROLES.get(role, policy.get("roles", {}).get(role, [])))
     if sudo:
-        permissions.update({"users:manage", "terminal:execute"})
+        permissions.update({"users:manage", "terminal:execute", "app:update"})
     else:
         permissions.difference_update({"users:manage", "terminal:execute"})
     return permissions

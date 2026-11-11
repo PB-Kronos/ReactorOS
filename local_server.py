@@ -36,10 +36,16 @@ UPDATE_RESULT = Path("/run/reactoros-update-result")
 
 
 def updater_configured():
-    return UPDATER.is_file() and all(
+    package_updates = (
+        Path("/etc/apt/sources.list.d/reactoros.sources").is_file()
+        and Path("/usr/share/keyrings/reactoros-archive-keyring.gpg").is_file()
+        and Path("/usr/lib/reactoros/package-update").is_file()
+    )
+    legacy_updates = UPDATER.is_file() and all(
         (Path("/etc/reactoros") / name).is_file()
         for name in ("update-repo", "update-public.pem")
     )
+    return package_updates or legacy_updates
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -135,7 +141,9 @@ class Handler(SimpleHTTPRequestHandler):
             if not isinstance(app, str) or app not in (*DESKTOP_APPS, "users", "users-cli", "menu-editor", "update"):
                 return self.send_json({"error": "Unknown desktop application"}, 400)
             privileged = app in ("users", "users-cli", "menu-editor", "update")
-            allowed = (current_access()["sudoGroup"] if app == "update" else
+            access = current_access() if app == "update" else None
+            allowed = (access["sudoGroup"] and "app:update" in access["permissions"]
+                       if app == "update" else
                        permitted("users:manage" if privileged else f"app:{app}"))
             if not allowed or (privileged and not self.kiosk_request(origin)):
                 return self.send_json({"error": "Permission denied"}, 403)

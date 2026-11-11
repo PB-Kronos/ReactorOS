@@ -207,7 +207,7 @@ install -d -m 0755 /etc/dconf/profile /etc/dconf/db/reactoros.d \
 printf '%s\n' 'user-db:reactoros' 'system-db:reactoros' > /etc/dconf/profile/reactoros
 cat > /etc/dconf/db/reactoros.d/00-reactoros <<'EOF'
 [org/gnome/shell]
-enabled-extensions=['reactoros-apps-menu@reactoros.local','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
+enabled-extensions=['dash-to-panel@jderose9.github.com','reactoros-apps-menu@reactoros.local','user-theme@gnome-shell-extensions.gcampax.github.com']
 disable-user-extensions=false
 
 [org/gnome/mutter]
@@ -269,6 +269,12 @@ install -m 0644 "$script_dir/themes/ReactorOS95/gtk-4.0/gtk.css" \
     /usr/share/themes/ReactorOS95/gtk-4.0/gtk.css
 install -m 0755 "$script_dir/reactoros-update-from-session.sh" \
     /usr/local/sbin/reactoros-update-from-session
+install -d -m 0755 /usr/lib/reactoros
+install -m 0755 "$script_dir/reactoros-package-update.sh" \
+    /usr/lib/reactoros/package-update
+install -m 0755 "$script_dir/reactoros-legacy-update-from-session.sh" \
+    /usr/lib/reactoros/legacy-update
+install -m 0644 "$script_dir/reactoros-update-now.py" /opt/reactoros/reactoros-update-now.py
 cp "$script_dir"/applications/*.desktop /opt/reactoros/share/applications/
 apps_menu_source=/usr/share/gnome-shell/extensions/apps-menu@gnome-shell-extensions.gcampax.github.com
 apps_menu_target=/usr/share/gnome-shell/extensions/reactoros-apps-menu@reactoros.local

@@ -2,6 +2,11 @@
 
 GitHub release and bootable USB instructions are in [Releases and USB](RELEASES.md).
 
+For an existing Debian desktop, install ReactorOS as a separate session from
+the signed Debian package. See [Install ReactorOS on Debian](PACKAGE.md).
+This is the recommended way to use ReactorOS without replacing the Linux
+distribution; the bootable image remains available for USB installation.
+
 **ReactorOS Kiosk Lab** is the separate persistent VM for testing the
 Windows 95-style workstation. Its VirtualBox configuration and virtual
 disk live under `linux-lab/ReactorOS Kiosk Lab`. For installed systems, the

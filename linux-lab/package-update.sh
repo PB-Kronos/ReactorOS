@@ -17,6 +17,8 @@ cp "$root/local_server.py" "$root/database_service.py" "$root/workstation_progra
     "$lab/reactoros-settings.py" "$lab/patch-apps-menu.py" "$lab/reactoros-default-session.py" \
     "$lab/reactoros-default-session.service" "$lab/reactoros.desktop" "$lab/reactoros-gnome-shell.css" \
     "$lab/reactoros-update-from-session.sh" "$lab/kiosk-session.sh" \
+    "$lab/reactoros-legacy-update-from-session.sh" "$lab/reactoros-package-update.sh" \
+    "$lab/reactoros-update-now.py" \
     "$lab/system-migrate.sh" "$lab/reactoros-update.sh" "$lab/reactoros-launch-app.py" "$stage/"
 mkdir -p "$stage/applications"
 cp "$lab"/applications/*.desktop "$stage/applications/"

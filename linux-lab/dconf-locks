@@ -1,0 +1,10 @@
+/org/gnome/desktop/interface/enable-hot-corners
+/org/gnome/desktop/notifications/show-banners
+/org/gnome/desktop/notifications/show-in-lock-screen
+/org/gnome/mutter/overlay-key
+/org/gnome/shell/enabled-extensions
+/org/gnome/shell/keybindings/toggle-application-view
+/org/gnome/shell/keybindings/toggle-overview
+/org/gnome/shell/extensions/apps-menu/apps-menu-toggle-menu
+/org/gnome/shell/extensions/dash-to-panel/panel-element-positions
+/org/gnome/shell/extensions/user-theme/name

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ "${1:-}" = purge ]; then
+    rm -rf -- /usr/share/gnome-shell/extensions/reactoros-apps-menu@reactoros.local
+    rm -f -- /usr/share/xsessions/reactoros.desktop
+    rm -f -- /etc/dconf/profile/reactoros
+    rm -rf -- /etc/dconf/db/reactoros.d
+    dconf update || true
+fi
+
+exit 0

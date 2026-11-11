@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ReactorOS Update
+Comment=Sign out of ReactorOS and install updates
+Exec=/usr/bin/python3 /opt/reactoros/reactoros-update-now.py
+Icon=system-software-update
+Categories=Settings;System;
+StartupNotify=true

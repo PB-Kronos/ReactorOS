@@ -5,9 +5,14 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: reactoros-release
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-24.04
+    env:
+      REACTOROS_APT_SIGNING_KEY: ${{ secrets.REACTOROS_APT_SIGNING_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,6 +38,25 @@ jobs:
             -in release-out/reactoros-update.tar.gz \
             -out release-out/reactoros-update.tar.gz.sig
           printf '%s\n' "$version" > release-out/VERSION
+      - name: Install Debian repository tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils gnupg
+      - name: Prepare APT archive key
+        if: ${{ env.REACTOROS_APT_SIGNING_KEY != '' }}
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/reactoros-apt-gnupg"
+          install -d -m 0700 "$GNUPGHOME"
+          printf '%s\n' "$REACTOROS_APT_SIGNING_KEY" | gpg --batch --import
+          fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')
+          test -n "$fingerprint"
+          gpg --batch --export "$fingerprint" > release-out/reactoros-archive-keyring.gpg
+          printf '%s\n' "$fingerprint" > release-out/apt-signing-fingerprint
+      - name: Build Debian package
+        run: |
+          if [ -s release-out/reactoros-archive-keyring.gpg ]; then
+            sh linux-lab/build-deb.sh "$(cat release-out/VERSION)" release-out release-out/reactoros-archive-keyring.gpg
+          else
+            sh linux-lab/build-deb.sh "$(cat release-out/VERSION)" release-out
+          fi
       - name: Publish rolling update release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,11 +65,52 @@ jobs:
           if gh release view "$version" >/dev/null 2>&1; then
             gh release upload "$version" --clobber \
               release-out/reactoros-update.tar.gz \
-              release-out/reactoros-update.tar.gz.sig
+              release-out/reactoros-update.tar.gz.sig \
+              release-out/reactoros-desktop_*.deb
           else
             gh release create "$version" --target "$GITHUB_SHA" \
               --title "ReactorOS update $version" \
               --notes "Signed ReactorOS software update for commit $GITHUB_SHA." \
               release-out/reactoros-update.tar.gz \
-              release-out/reactoros-update.tar.gz.sig
+              release-out/reactoros-update.tar.gz.sig \
+              release-out/reactoros-desktop_*.deb
           fi
+      - name: Build signed APT repository
+        if: ${{ env.REACTOROS_APT_SIGNING_KEY != '' }}
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/reactoros-apt-gnupg"
+          repo="$RUNNER_TEMP/reactoros-apt-repository"
+          mkdir -p "$repo/pool/main/r/reactoros" "$repo/dists/stable/main/binary-amd64"
+          cp release-out/reactoros-desktop_*.deb "$repo/pool/main/r/reactoros/"
+          (cd "$repo" && dpkg-scanpackages --arch amd64 pool /dev/null > dists/stable/main/binary-amd64/Packages)
+          gzip -9 -n -c "$repo/dists/stable/main/binary-amd64/Packages" > "$repo/dists/stable/main/binary-amd64/Packages.gz"
+          cat > "$RUNNER_TEMP/reactoros-apt-release.conf" <<'EOF'
+          APT::FTPArchive::Release::Origin "PB-Kronos ReactorOS";
+          APT::FTPArchive::Release::Label "ReactorOS";
+          APT::FTPArchive::Release::Suite "stable";
+          APT::FTPArchive::Release::Codename "stable";
+          APT::FTPArchive::Release::Architectures "amd64";
+          APT::FTPArchive::Release::Components "main";
+          APT::FTPArchive::Release::Description "ReactorOS desktop packages";
+          EOF
+          apt-ftparchive -c="$RUNNER_TEMP/reactoros-apt-release.conf" release "$repo/dists/stable" > "$repo/dists/stable/Release"
+          fingerprint=$(cat release-out/apt-signing-fingerprint)
+          gpg --batch --yes --local-user "$fingerprint" --digest-algo SHA256 \
+            --clearsign -o "$repo/dists/stable/InRelease" "$repo/dists/stable/Release"
+          gpg --batch --yes --local-user "$fingerprint" --digest-algo SHA256 \
+            --detach-sign -o "$repo/dists/stable/Release.gpg" "$repo/dists/stable/Release"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin reactoros-apt; then
+            git worktree add -B reactoros-apt "$RUNNER_TEMP/reactoros-apt-branch" origin/reactoros-apt
+          else
+            git worktree add --detach "$RUNNER_TEMP/reactoros-apt-branch" HEAD
+            git -C "$RUNNER_TEMP/reactoros-apt-branch" switch --orphan reactoros-apt
+          fi
+          apt_branch="$RUNNER_TEMP/reactoros-apt-branch"
+          git -C "$apt_branch" rm -rf --ignore-unmatch . >/dev/null 2>&1 || true
+          git -C "$apt_branch" clean -fdx
+          cp -a "$repo/." "$apt_branch/"
+          git -C "$apt_branch" add -A
+          git -C "$apt_branch" commit -m "Publish ReactorOS APT package $(cat release-out/VERSION)"
+          git -C "$apt_branch" push origin HEAD:refs/heads/reactoros-apt --force

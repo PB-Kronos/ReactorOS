@@ -99,9 +99,9 @@ class Settings:
             self._action(accounts, "No available controls",
                          "This account has no account or storage administration permission.", lambda: None)
 
-        if self.operator.get("sudoGroup"):
-            self._action(software, "Install latest update", "Install the latest signed ReactorOS update.",
-                         lambda: self._launch("update"))
+        if self.operator.get("sudoGroup") and "app:update" in self.permissions:
+            self._action(software, "ReactorOS Update", "Choose APT packages or the signed recovery updater.",
+                         self._open_update_manager)
         self._action(software, "Check for updates", "Open the ReactorOS releases page.",
                      lambda: subprocess.Popen([
                          "firefox-esr", "--new-window",
@@ -139,6 +139,15 @@ class Settings:
 
     def _open_control_center(self):
         subprocess.Popen(["gnome-control-center"], start_new_session=True)
+
+    def _open_update_manager(self):
+        manager = "/opt/reactoros/reactoros-update-now.py"
+        if os.path.isfile(manager):
+            subprocess.Popen(["/usr/bin/python3", manager], start_new_session=True)
+            return
+        # Older installations can still launch their signed updater while
+        # the package carrying the standalone Update Manager is being applied.
+        self._launch("update")
 
     def _safe(self, callback):
         try:

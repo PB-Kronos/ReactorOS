@@ -102,7 +102,7 @@ install -m 0644 "$lab/reactoros-gnome-shell.css" \
 printf '%s\n' 'user-db:reactoros' 'system-db:reactoros' > "$overlay/etc/dconf/profile/reactoros"
 cat > "$overlay/etc/dconf/db/reactoros.d/00-reactoros" <<'EOF'
 [org/gnome/shell]
-enabled-extensions=['reactoros-apps-menu@reactoros.local','dash-to-panel@jderose9.github.com','user-theme@gnome-shell-extensions.gcampax.github.com']
+enabled-extensions=['dash-to-panel@jderose9.github.com','reactoros-apps-menu@reactoros.local','user-theme@gnome-shell-extensions.gcampax.github.com']
 disable-user-extensions=false
 
 [org/gnome/mutter]

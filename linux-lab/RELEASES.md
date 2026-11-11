@@ -5,6 +5,13 @@ assets. The current updater downloads public assets without a GitHub token.
 VM disks, build output, local databases and signing keys are excluded by
 `.gitignore`. Review `git status` before the initial push.
 
+The release workflow also publishes `reactoros-desktop_*_all.deb` and a
+signed APT repository on the `reactoros-apt` branch. Existing Debian 13
+installations can install that package as a separate GNOME Shell session and
+receive ReactorOS-only updates with APT. Follow [PACKAGE.md](PACKAGE.md) for
+the one-time install and update commands. The legacy signed archive updater
+remains available as a recovery option.
+
 ## Set up release signing once
 
 On a trusted machine with OpenSSL, create a release key and public key:

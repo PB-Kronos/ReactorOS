@@ -1,24 +1,24 @@
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Wed, 11 Nov 2026 19:51:02 +0000
+Date: Mon, 16 Nov 2026 20:31:00 +0000
 Description: ReactorOS desktop packages
 Label: ReactorOS
 Origin: PB-Kronos ReactorOS
 Suite: stable
 MD5Sum:
- acf0c8ee184552ae941c59a7578c8dd2              192 Release
- fc4388ce8e49cd7bf540de9f7fc15e9e             1249 main/binary-amd64/Packages
- 521ec8fa05f3cea298b4b7ab7491cc08              736 main/binary-amd64/Packages.gz
+ 41331527475d024c6efc877ff5817e4e              192 Release
+ 586452f095c382d5f911b86a9758024b             1249 main/binary-amd64/Packages
+ 3c438ea8ab7d6049eb91219364f6127b              734 main/binary-amd64/Packages.gz
 SHA1:
- 685d3f4026b0246ac821eb5c302abd83d2540922              192 Release
- 3d0a0859fa80d311a8b6e5dba16506babc48902a             1249 main/binary-amd64/Packages
- 55dd1be03ed689820a6aacd72c537784c4d7161d              736 main/binary-amd64/Packages.gz
+ 770d8d30db26863717a7b3209a0c2d4782074dbd              192 Release
+ 9d67ffe7a4a7aee421f4c6f27c9f9e5b93c515b1             1249 main/binary-amd64/Packages
+ a97d2c3a58070d166083984246653923916cda2a              734 main/binary-amd64/Packages.gz
 SHA256:
- 1abcf4f4550a2f79f091a9d7e4ea3220c063a7e3396476347c7f5f3e0682553a              192 Release
- 8723097a7ce1d93f64c4ac4815eb47e379c63cc17f9c510a131fc9bb4423b397             1249 main/binary-amd64/Packages
- 80cd779395069a055565032dc6e3e1811461539a36c0ed320147f174a1f9af5b              736 main/binary-amd64/Packages.gz
+ c48f559b234d1d10a3559e29683c7ad9df31d01b93c0029503a48fc77aa6eaa5              192 Release
+ 5a952107ca0819eaf244e4758acba93ff7226f2206e473e9094524e667576746             1249 main/binary-amd64/Packages
+ 640d7d2e7feef556478f1fd504c02c5b05a95c92ae41477ca36ac854a3e01687              734 main/binary-amd64/Packages.gz
 SHA512:
- 0618ab6674a52eaee35fe97864afa37f48775b95fa1bc6005dfc60b6455e1eac795bb582f2b61e8dd45be55f9fd340d0bcf970a6805bd625793cc010a4178207              192 Release
- ab2fe460dcb71d46f6251be7a8dc7404461dc40ccd5348d498c9aecad52bec6c52836cc3f20cac038d3836c239e23b552ef417f0eff1b8f395c7acb1b10e9b7a             1249 main/binary-amd64/Packages
- b0419854a2056b58a378dca6a5cb354cc11fd7589ef0e168d1df17a6ed2fa1ea90aa7841d900d92215581e550a0f39388f04a3bccb0459db48f5cdc7a1e766dc              736 main/binary-amd64/Packages.gz
+ 1e89a38e3804dfa22623b710acb7b4c7eaf09ad76d9dc4e29a2cff64ff02b9d4243e9242f7dcb120d5134030c7218a5b363ce7566719e66b2dc6571306128f52              192 Release
+ b3e4854a0c3ee7b615c4a2bc41416baeee68fefc20215ef0be526af979688ab4ab9a3ce702d6016245bd5a62ccac7dfa3f2153b2f438d2ff96616deb127afb0d             1249 main/binary-amd64/Packages
+ 588fc1d09d3243b073ca069c04b47cdf03a06dd5dc9aa155b105020fb8d83164e8a8413574ec959cddbbdbcf2227c0cbe228d422c2e27746aebc0f8979cd6606              734 main/binary-amd64/Packages.gz

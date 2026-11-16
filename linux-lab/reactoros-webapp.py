@@ -4,14 +4,54 @@ import json
 import os
 import subprocess
 import sys
+import traceback
 from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-import gi
-gi.require_version("Gtk", "3.0")
-gi.require_version("WebKit2", "4.1")
-from gi.repository import Gio, Gdk, Gtk, WebKit2
+
+def report_startup_error(error):
+    """Persist launch failures and show them instead of failing silently from the app menu."""
+    state = os.environ.get(
+        "REACTOROS_DATA_DIR",
+        os.path.join(os.path.expanduser("~"), ".local", "state", "reactoros"),
+    )
+    detail = f"{type(error).__name__}: {error}"
+    try:
+        os.makedirs(state, mode=0o700, exist_ok=True)
+        with open(os.path.join(state, "program-launch.log"), "a", encoding="utf-8") as log:
+            log.write("\n--- ReactorOS program startup failure ---\n")
+            log.write(traceback.format_exc())
+    except OSError:
+        pass
+
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk
+        dialog = Gtk.MessageDialog(
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.CLOSE,
+            text="ReactorOS program could not start",
+        )
+        dialog.format_secondary_text(
+            f"{detail}\n\nDetails were saved to {state}/program-launch.log"
+        )
+        dialog.run()
+        dialog.destroy()
+    except Exception:
+        print(f"ReactorOS program could not start: {detail}", file=sys.stderr)
+
+
+try:
+    import gi
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gio, Gdk, Gtk
+    gi.require_version("WebKit2", "4.1")
+    from gi.repository import WebKit2
+except Exception as error:
+    report_startup_error(error)
+    raise SystemExit(1)
 
 BASE = "http://127.0.0.1:18765"
 TOKEN = os.environ.get("REACTOROS_TERMINAL_TOKEN", "")
@@ -200,8 +240,7 @@ class ReactorOSApps(Gtk.Application):
 if __name__ == "__main__":
     try:
         application = ReactorOSApps()
-    except (OSError, URLError, ValueError) as error:
-        print("ReactorOS native applications could not connect to the local service:", error,
-              file=sys.stderr)
+        raise SystemExit(application.run(sys.argv))
+    except Exception as error:
+        report_startup_error(error)
         raise SystemExit(1)
-    raise SystemExit(application.run(sys.argv))
